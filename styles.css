@@ -7,20 +7,20 @@ body[data-theme="forest"] {
   --rosy-brown: #d3968c;
   --midnight-green: #105666;
   --bg: var(--dark-green);
-  --panel: rgba(10, 51, 35, 0.9);
-  --panel-solid: #123b2b;
-  --panel-2: rgba(16, 86, 102, 0.48);
-  --line: rgba(247, 244, 213, 0.22);
-  --muted: rgba(247, 244, 213, 0.72);
+  --panel: color-mix(in srgb, var(--dark-green) 74%, var(--midnight-green) 26%);
+  --panel-solid: var(--midnight-green);
+  --panel-2: color-mix(in srgb, var(--midnight-green) 72%, var(--moss-green) 28%);
+  --line: color-mix(in srgb, var(--beige) 28%, var(--moss-green) 72%);
+  --muted: color-mix(in srgb, var(--beige) 70%, var(--moss-green) 30%);
   --text: var(--beige);
   --red: var(--rosy-brown);
-  --green: #95d37f;
-  --blue: #73c7d6;
-  --yellow: #f2cf5b;
-  --purple: #d89cff;
+  --green: var(--moss-green);
+  --blue: var(--midnight-green);
+  --yellow: var(--beige);
+  --purple: var(--rosy-brown);
   --accent: var(--moss-green);
   --accent-strong: var(--midnight-green);
-  --shadow: rgba(0, 0, 0, 0.35);
+  --shadow: color-mix(in srgb, var(--dark-green) 74%, transparent);
 }
 
 body[data-theme="rose"] {
@@ -29,21 +29,21 @@ body[data-theme="rose"] {
   --brook-green: #aabaae;
   --chalk: #e3d6bf;
   --pomelo-olive: #9f9679;
-  --bg: #2a1720;
-  --panel: rgba(72, 35, 50, 0.92);
-  --panel-solid: #4b2636;
-  --panel-2: rgba(181, 114, 138, 0.2);
-  --line: rgba(227, 214, 191, 0.24);
-  --muted: rgba(227, 214, 191, 0.72);
+  --bg: var(--amaranth);
+  --panel: color-mix(in srgb, var(--amaranth) 72%, var(--thulian-pink) 28%);
+  --panel-solid: var(--thulian-pink);
+  --panel-2: color-mix(in srgb, var(--pomelo-olive) 58%, var(--amaranth) 42%);
+  --line: color-mix(in srgb, var(--chalk) 36%, var(--pomelo-olive) 64%);
+  --muted: color-mix(in srgb, var(--chalk) 68%, var(--brook-green) 32%);
   --text: var(--chalk);
-  --red: #f07d8f;
+  --red: var(--thulian-pink);
   --green: var(--brook-green);
-  --blue: #c5d6cc;
-  --yellow: #e1c66e;
+  --blue: var(--brook-green);
+  --yellow: var(--pomelo-olive);
   --purple: var(--thulian-pink);
   --accent: var(--amaranth);
   --accent-strong: var(--pomelo-olive);
-  --shadow: rgba(0, 0, 0, 0.32);
+  --shadow: color-mix(in srgb, var(--amaranth) 68%, transparent);
 }
 
 * {
@@ -55,7 +55,7 @@ body {
   min-height: 100vh;
   background:
     radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 28rem),
-    linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 84%, #000 16%) 48%, #07080a 100%);
+    linear-gradient(135deg, var(--bg) 0%, var(--panel-solid) 48%, color-mix(in srgb, var(--bg) 78%, var(--accent-strong) 22%) 100%);
   color: var(--text);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -127,7 +127,7 @@ h1 {
 
 .welcome-copy > p:not(.eyebrow) {
   max-width: 620px;
-  color: #c9ced8;
+  color: var(--muted);
   font-size: 1.1rem;
   line-height: 1.7;
 }
@@ -147,7 +147,7 @@ h1 {
   padding: 14px 22px;
   border-color: transparent;
   background: var(--accent);
-  color: white;
+  color: var(--text);
   font-weight: 800;
 }
 
@@ -190,7 +190,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 12px;
-  background: color-mix(in srgb, var(--bg) 72%, #000 28%);
+  background: color-mix(in srgb, var(--bg) 72%, var(--accent-strong) 28%);
   color: var(--text);
 }
 
@@ -232,7 +232,6 @@ h1 {
 .day-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(21, 23, 27, 0.92);
   background: var(--panel);
 }
 
@@ -326,7 +325,7 @@ input[type="range"] {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 54%, transparent);
   color: var(--muted);
 }
 
@@ -432,7 +431,7 @@ input[type="range"] {
   aspect-ratio: 1;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--bg) 80%, #000 20%);
+  background: color-mix(in srgb, var(--bg) 80%, var(--accent-strong) 20%);
   color: var(--text);
   font-size: 0.78rem;
 }
@@ -449,7 +448,7 @@ input[type="range"] {
 
 .date-button.holiday {
   color: var(--red);
-  background: rgba(255, 95, 109, 0.1);
+  background: color-mix(in srgb, var(--red) 18%, transparent);
 }
 
 .date-button.has-bunk::after,
@@ -521,19 +520,19 @@ input[type="range"] {
 
 .status-button.active.attended {
   border-color: var(--green);
-  background: rgba(53, 208, 127, 0.18);
+  background: color-mix(in srgb, var(--green) 22%, transparent);
   color: var(--green);
 }
 
 .status-button.active.missed {
   border-color: var(--red);
-  background: rgba(255, 95, 109, 0.18);
+  background: color-mix(in srgb, var(--red) 22%, transparent);
   color: var(--red);
 }
 
 .status-button.active.bunk {
   border-color: var(--purple);
-  background: rgba(181, 108, 255, 0.18);
+  background: color-mix(in srgb, var(--purple) 22%, transparent);
   color: var(--purple);
 }
 

@@ -80,6 +80,8 @@ let hasServer = location.protocol !== "file:";
 const els = {
   login: document.querySelector("#login"),
   authForm: document.querySelector("#authForm"),
+  loginButton: document.querySelector("#loginButton"),
+  registerButton: document.querySelector("#registerButton"),
   username: document.querySelector("#username"),
   password: document.querySelector("#password"),
   authMessage: document.querySelector("#authMessage"),
@@ -111,9 +113,14 @@ async function init() {
   bindGlobalEvents();
   updateWelcomePreview();
 
-  if (session?.username) {
+  if (session?.username && session?.token) {
     const loaded = await loadUserState(session.username);
-    if (loaded) showWelcome();
+    if (loaded) {
+      showWelcome();
+    } else {
+      session = null;
+      localStorage.removeItem(localSessionKey);
+    }
   }
 }
 
@@ -125,9 +132,17 @@ function bindGlobalEvents() {
 
   els.authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const submitter = event.submitter;
-    authMode = submitter?.dataset.mode || authMode;
     await authenticate(authMode);
+  });
+
+  els.loginButton.addEventListener("click", async () => {
+    authMode = "login";
+    await authenticate("login");
+  });
+
+  els.registerButton.addEventListener("click", async () => {
+    authMode = "register";
+    await authenticate("register");
   });
 
   els.enterApp.addEventListener("click", () => {
@@ -179,7 +194,7 @@ async function authenticate(mode) {
 
   try {
     const result = await api(`/${mode}`, { username, password });
-    session = { username: result.username };
+    session = { username: result.username, token: result.token };
     localStorage.setItem(localSessionKey, JSON.stringify(session));
     state = normalizeState(result.state);
     showWelcome();
@@ -398,11 +413,12 @@ function calculateCourse(courseId, target) {
 
 async function loadUserState(username) {
   try {
-    const result = await api(`/state?username=${encodeURIComponent(username)}`);
+    const result = await api(`/state?username=${encodeURIComponent(username)}&token=${encodeURIComponent(session.token)}`);
     state = normalizeState(result.state);
     hasServer = true;
     return true;
-  } catch {
+  } catch (error) {
+    if (error.status === 401) return false;
     state = loadLocalState(username);
     hasServer = false;
     return true;
@@ -413,7 +429,7 @@ async function saveState() {
   if (!session?.username) return;
   if (hasServer) {
     try {
-      await api("/state", { username: session.username, state });
+      await api("/state", { username: session.username, token: session.token, state });
       return;
     } catch {
       hasServer = false;
@@ -437,7 +453,11 @@ async function api(path, body) {
   } catch {
     payload = {};
   }
-  if (!response.ok) throw new Error(payload.error || "Request failed.");
+  if (!response.ok) {
+    const error = new Error(payload.error || "Request failed.");
+    error.status = response.status;
+    throw error;
+  }
   return payload;
 }
 

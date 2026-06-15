@@ -1,10 +1,12 @@
 const http = require("http");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
 const root = __dirname;
 const dataFile = process.env.DATA_FILE || path.join(root, "data.json");
 const port = Number(process.env.PORT || 3000);
+const sessions = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -47,12 +49,12 @@ async function handleApi(req, res, url) {
     }
 
     db.users[username] = {
-      password,
+      ...createPasswordRecord(password),
       state: blankState(),
       createdAt: new Date().toISOString(),
     };
     writeDb(db);
-    sendJson(res, 201, { username, state: db.users[username].state });
+    sendJson(res, 201, { username, token: createSession(username), state: db.users[username].state });
     return;
   }
 
@@ -60,17 +62,32 @@ async function handleApi(req, res, url) {
     const body = await readJson(req);
     const username = cleanUsername(body.username);
     const password = String(body.password || "");
-    const user = readDb().users[username];
-    if (!user || user.password !== password) {
+    const db = readDb();
+    const user = db.users[username];
+    if (!user || !verifyPassword(user, password)) {
       sendJson(res, 401, { error: "Incorrect username or password." });
       return;
     }
-    sendJson(res, 200, { username, state: user.state || blankState() });
+
+    if (user.password) {
+      delete user.password;
+      Object.assign(user, createPasswordRecord(password));
+      user.updatedAt = new Date().toISOString();
+      writeDb(db);
+    }
+
+    sendJson(res, 200, { username, token: createSession(username), state: user.state || blankState() });
     return;
   }
 
   if (req.method === "GET" && url.pathname === "/api/state") {
     const username = cleanUsername(url.searchParams.get("username"));
+    const token = String(url.searchParams.get("token") || "");
+    if (!isSessionValid(username, token)) {
+      sendJson(res, 401, { error: "Please log in again." });
+      return;
+    }
+
     const user = readDb().users[username];
     if (!user) {
       sendJson(res, 404, { error: "User not found." });
@@ -83,6 +100,11 @@ async function handleApi(req, res, url) {
   if (req.method === "POST" && url.pathname === "/api/state") {
     const body = await readJson(req);
     const username = cleanUsername(body.username);
+    if (!isSessionValid(username, body.token)) {
+      sendJson(res, 401, { error: "Please log in again." });
+      return;
+    }
+
     const db = readDb();
     if (!db.users[username]) {
       sendJson(res, 404, { error: "User not found." });
@@ -140,6 +162,35 @@ function writeDb(db) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
+}
+
+function createPasswordRecord(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return {
+    passwordAlgo: "scrypt",
+    passwordSalt: salt,
+    passwordHash: crypto.scryptSync(password, salt, 64).toString("hex"),
+  };
+}
+
+function verifyPassword(user, password) {
+  if (user.passwordHash && user.passwordSalt) {
+    const stored = Buffer.from(user.passwordHash, "hex");
+    const candidate = crypto.scryptSync(password, user.passwordSalt, stored.length);
+    return stored.length === candidate.length && crypto.timingSafeEqual(stored, candidate);
+  }
+
+  return typeof user.password === "string" && user.password === password;
+}
+
+function createSession(username) {
+  const token = crypto.randomBytes(32).toString("hex");
+  sessions.set(token, username);
+  return token;
+}
+
+function isSessionValid(username, token) {
+  return Boolean(username && token && sessions.get(String(token)) === username);
 }
 
 function readJson(req) {
