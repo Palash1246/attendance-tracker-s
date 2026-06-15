@@ -8,6 +8,40 @@
   </head>
   <body>
     <main class="app-shell">
+      <div class="corner-actions">
+        <button id="themeToggle" class="icon-action" title="Switch theme">Theme A</button>
+      </div>
+
+      <section id="login" class="login-screen" aria-label="Login">
+        <div class="login-copy">
+          <p class="eyebrow">Attendance Guard</p>
+          <h1>Sign in to your semester.</h1>
+          <p>
+            Use a unique username so each person gets their own tracker on this
+            shared attendance app.
+          </p>
+        </div>
+        <form id="authForm" class="auth-panel">
+          <div>
+            <p class="eyebrow">Login / Register</p>
+            <h2>Continue</h2>
+          </div>
+          <label>
+            <span>Username</span>
+            <input id="username" name="username" autocomplete="username" required minlength="3" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input id="password" name="password" type="password" autocomplete="current-password" required minlength="3" />
+          </label>
+          <p id="authMessage" class="form-message"></p>
+          <div class="auth-actions">
+            <button class="primary-action" type="submit" data-mode="login">Log in</button>
+            <button class="ghost-action" type="submit" data-mode="register">Create user</button>
+          </div>
+        </form>
+      </section>
+
       <section id="welcome" class="welcome">
         <div class="welcome-copy">
           <p class="eyebrow">Academy of Architecture - Sem V</p>
@@ -32,12 +66,14 @@
             <h2 id="dayTitle">Today</h2>
           </div>
           <div class="topbar-actions">
+            <span id="activeUser" class="active-user"></span>
             <label class="target-control">
               <span>Target</span>
               <input id="targetAttendance" type="range" min="75" max="95" value="75" />
               <strong id="targetLabel">75%</strong>
             </label>
             <button id="resetData" class="ghost-action">Reset marks</button>
+            <button id="logout" class="ghost-action">Log out</button>
           </div>
         </header>
 

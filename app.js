@@ -6,6 +6,7 @@ const semester = {
 const holidays = [
   ["2026-06-01", "Bakri Id / commencement day"],
   ["2026-06-26", "Moharram"],
+  ["2026-08-15", "Independence Day / Parsi New Year"],
   ["2026-08-26", "Id-e-Milad"],
   ["2026-09-14", "Ganesh Chaturthi"],
   ["2026-09-15", "Ganpati vacation"],
@@ -51,7 +52,9 @@ const weeklySchedule = {
 };
 
 const holidayMap = new Map(holidays);
-const storeKey = "attendance-guard-v1";
+const localSessionKey = "attendance-guard-session";
+const localStatePrefix = "attendance-guard-state:";
+const themeKey = "attendance-guard-theme";
 const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const monthNames = [
   "January",
@@ -68,10 +71,19 @@ const monthNames = [
   "December",
 ];
 
-let state = loadState();
+let session = loadSession();
+let state = blankState();
 let selectedDate = getInitialDate();
+let authMode = "login";
+let hasServer = location.protocol !== "file:";
 
 const els = {
+  login: document.querySelector("#login"),
+  authForm: document.querySelector("#authForm"),
+  username: document.querySelector("#username"),
+  password: document.querySelector("#password"),
+  authMessage: document.querySelector("#authMessage"),
+  themeToggle: document.querySelector("#themeToggle"),
   welcome: document.querySelector("#welcome"),
   tracker: document.querySelector("#tracker"),
   enterApp: document.querySelector("#enterApp"),
@@ -88,17 +100,35 @@ const els = {
   scheduleList: document.querySelector("#scheduleList"),
   markDayBunk: document.querySelector("#markDayBunk"),
   resetData: document.querySelector("#resetData"),
+  activeUser: document.querySelector("#activeUser"),
+  logout: document.querySelector("#logout"),
 };
 
 init();
 
-function init() {
-  els.targetAttendance.value = state.target;
-  els.welcomeDate.textContent = longDate(selectedDate);
-  els.welcomeHint.textContent = getClassesForDate(selectedDate).length
-    ? `${getClassesForDate(selectedDate).length} classes scheduled.`
-    : "No classes scheduled.";
-  els.semesterRange.textContent = `${shortDate(parseDate(semester.start))} - ${shortDate(parseDate(semester.end))}`;
+async function init() {
+  applyTheme(localStorage.getItem(themeKey) || "forest");
+  bindGlobalEvents();
+  updateWelcomePreview();
+
+  if (session?.username) {
+    const loaded = await loadUserState(session.username);
+    if (loaded) showWelcome();
+  }
+}
+
+function bindGlobalEvents() {
+  els.themeToggle.addEventListener("click", () => {
+    const nextTheme = document.body.dataset.theme === "forest" ? "rose" : "forest";
+    applyTheme(nextTheme);
+  });
+
+  els.authForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitter = event.submitter;
+    authMode = submitter?.dataset.mode || authMode;
+    await authenticate(authMode);
+  });
 
   els.enterApp.addEventListener("click", () => {
     els.welcome.classList.add("hidden");
@@ -106,30 +136,95 @@ function init() {
     render();
   });
 
-  els.targetAttendance.addEventListener("input", () => {
+  els.logout.addEventListener("click", () => {
+    session = null;
+    localStorage.removeItem(localSessionKey);
+    state = blankState();
+    els.tracker.classList.add("hidden");
+    els.welcome.classList.add("hidden");
+    els.login.classList.remove("hidden");
+  });
+
+  els.targetAttendance.addEventListener("input", async () => {
     state.target = Number(els.targetAttendance.value);
-    saveState();
+    await saveState();
     render();
   });
 
-  els.markDayBunk.addEventListener("click", () => {
+  els.markDayBunk.addEventListener("click", async () => {
     const classes = getClassesForDate(selectedDate);
     const allBunked = classes.every((item) => getStatus(selectedDate, item, "planned") === "bunk");
     classes.forEach((item) => setStatus(selectedDate, item, "planned", allBunked ? null : "bunk"));
-    saveState();
+    await saveState();
     render();
   });
 
-  els.resetData.addEventListener("click", () => {
+  els.resetData.addEventListener("click", async () => {
     if (!confirm("Clear all attendance marks and mandatory bunks?")) return;
     state.records = {};
-    saveState();
+    await saveState();
     render();
   });
 }
 
+async function authenticate(mode) {
+  const username = els.username.value.trim();
+  const password = els.password.value;
+  setAuthMessage("");
+
+  if (!username || !password) {
+    setAuthMessage("Enter a username and password.");
+    return;
+  }
+
+  try {
+    const result = await api(`/${mode}`, { username, password });
+    session = { username: result.username };
+    localStorage.setItem(localSessionKey, JSON.stringify(session));
+    state = normalizeState(result.state);
+    showWelcome();
+  } catch (error) {
+    if (hasServer) {
+      setAuthMessage(error.message || "Could not sign in.");
+      return;
+    }
+
+    if (mode === "register") {
+      const existing = localStorage.getItem(`${localStatePrefix}${username}`);
+      if (existing) {
+        setAuthMessage("That username already exists on this browser.");
+        return;
+      }
+    }
+
+    session = { username };
+    localStorage.setItem(localSessionKey, JSON.stringify(session));
+    state = loadLocalState(username);
+    await saveState();
+    showWelcome();
+  }
+}
+
+function showWelcome() {
+  els.login.classList.add("hidden");
+  els.tracker.classList.add("hidden");
+  els.welcome.classList.remove("hidden");
+  els.activeUser.textContent = session?.username ? `@${session.username}` : "";
+  els.targetAttendance.value = state.target;
+  updateWelcomePreview();
+}
+
+function updateWelcomePreview() {
+  els.welcomeDate.textContent = longDate(selectedDate);
+  els.welcomeHint.textContent = getClassesForDate(selectedDate).length
+    ? `${getClassesForDate(selectedDate).length} classes scheduled.`
+    : "No classes scheduled.";
+  els.semesterRange.textContent = `${shortDate(parseDate(semester.start))} - ${shortDate(parseDate(semester.end))}`;
+}
+
 function render() {
   els.targetLabel.textContent = `${state.target}%`;
+  els.activeUser.textContent = session?.username ? `@${session.username}` : "";
   els.dayTitle.textContent = `Current day: ${longDate(getInitialDate())}`;
   renderSummary();
   renderCalendar();
@@ -259,13 +354,13 @@ function renderDay() {
     .join("");
 
   els.scheduleList.querySelectorAll(".status-button").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const parent = button.closest(".class-actions");
       const date = parseDate(parent.dataset.date);
       const item = classes.find((entry) => classId(entry) === parent.dataset.id);
       const current = getStatus(date, item, button.dataset.field);
       setStatus(date, item, button.dataset.field, current === button.dataset.value ? null : button.dataset.value);
-      saveState();
+      await saveState();
       render();
     });
   });
@@ -299,6 +394,86 @@ function calculateCourse(courseId, target) {
   const canBunk = Math.max(0, optionalBunks);
   const mustAttend = Math.max(0, upcoming - plannedBunks - canBunk);
   return { attended, total, upcoming, plannedBunks, canBunk, mustAttend };
+}
+
+async function loadUserState(username) {
+  try {
+    const result = await api(`/state?username=${encodeURIComponent(username)}`);
+    state = normalizeState(result.state);
+    hasServer = true;
+    return true;
+  } catch {
+    state = loadLocalState(username);
+    hasServer = false;
+    return true;
+  }
+}
+
+async function saveState() {
+  if (!session?.username) return;
+  if (hasServer) {
+    try {
+      await api("/state", { username: session.username, state });
+      return;
+    } catch {
+      hasServer = false;
+    }
+  }
+  localStorage.setItem(`${localStatePrefix}${session.username}`, JSON.stringify(state));
+}
+
+async function api(path, body) {
+  const options = body
+    ? {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    : undefined;
+  const response = await fetch(`/api${path}`, options);
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch {
+    payload = {};
+  }
+  if (!response.ok) throw new Error(payload.error || "Request failed.");
+  return payload;
+}
+
+function loadSession() {
+  try {
+    return JSON.parse(localStorage.getItem(localSessionKey));
+  } catch {
+    return null;
+  }
+}
+
+function loadLocalState(username) {
+  try {
+    return normalizeState(JSON.parse(localStorage.getItem(`${localStatePrefix}${username}`)));
+  } catch {
+    return blankState();
+  }
+}
+
+function blankState() {
+  return { target: 75, records: {} };
+}
+
+function normalizeState(value) {
+  return { ...blankState(), ...(value || {}), records: value?.records || {} };
+}
+
+function setAuthMessage(message) {
+  els.authMessage.textContent = message;
+}
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  localStorage.setItem(themeKey, theme);
+  els.themeToggle.textContent = theme === "forest" ? "Rose" : "Forest";
+  els.themeToggle.title = theme === "forest" ? "Switch to rose theme" : "Switch to forest theme";
 }
 
 function getClassesForDate(date) {
@@ -349,19 +524,6 @@ function getStatus(date, item, field) {
 
 function classId(item) {
   return `${item.course}-${item.start}-${item.end}`.replace(/\s+/g, "");
-}
-
-function loadState() {
-  const fallback = { target: 75, records: {} };
-  try {
-    return { ...fallback, ...JSON.parse(localStorage.getItem(storeKey)) };
-  } catch {
-    return fallback;
-  }
-}
-
-function saveState() {
-  localStorage.setItem(storeKey, JSON.stringify(state));
 }
 
 function parseDate(key) {

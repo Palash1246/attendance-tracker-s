@@ -1,16 +1,49 @@
-:root {
+:root,
+body[data-theme="forest"] {
   color-scheme: dark;
-  --bg: #090a0d;
-  --panel: #15171b;
-  --panel-2: #1d2026;
-  --line: #30343c;
-  --muted: #9ca3af;
-  --text: #f5f7fb;
-  --red: #ff5f6d;
-  --green: #35d07f;
-  --blue: #4d8dff;
-  --yellow: #ffd84d;
-  --purple: #b56cff;
+  --dark-green: #0a3323;
+  --moss-green: #839958;
+  --beige: #f7f4d5;
+  --rosy-brown: #d3968c;
+  --midnight-green: #105666;
+  --bg: var(--dark-green);
+  --panel: rgba(10, 51, 35, 0.9);
+  --panel-solid: #123b2b;
+  --panel-2: rgba(16, 86, 102, 0.48);
+  --line: rgba(247, 244, 213, 0.22);
+  --muted: rgba(247, 244, 213, 0.72);
+  --text: var(--beige);
+  --red: var(--rosy-brown);
+  --green: #95d37f;
+  --blue: #73c7d6;
+  --yellow: #f2cf5b;
+  --purple: #d89cff;
+  --accent: var(--moss-green);
+  --accent-strong: var(--midnight-green);
+  --shadow: rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="rose"] {
+  --amaranth: #933b5b;
+  --thulian-pink: #b5728a;
+  --brook-green: #aabaae;
+  --chalk: #e3d6bf;
+  --pomelo-olive: #9f9679;
+  --bg: #2a1720;
+  --panel: rgba(72, 35, 50, 0.92);
+  --panel-solid: #4b2636;
+  --panel-2: rgba(181, 114, 138, 0.2);
+  --line: rgba(227, 214, 191, 0.24);
+  --muted: rgba(227, 214, 191, 0.72);
+  --text: var(--chalk);
+  --red: #f07d8f;
+  --green: var(--brook-green);
+  --blue: #c5d6cc;
+  --yellow: #e1c66e;
+  --purple: var(--thulian-pink);
+  --accent: var(--amaranth);
+  --accent-strong: var(--pomelo-olive);
+  --shadow: rgba(0, 0, 0, 0.32);
 }
 
 * {
@@ -21,8 +54,8 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 8% 0%, rgba(77, 141, 255, 0.13), transparent 28rem),
-    linear-gradient(135deg, #090a0d 0%, #111318 48%, #07080a 100%);
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 28rem),
+    linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 84%, #000 16%) 48%, #07080a 100%);
   color: var(--text);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -44,10 +77,18 @@ button {
   padding: 24px;
 }
 
+.corner-actions {
+  position: fixed;
+  z-index: 20;
+  top: 18px;
+  right: 18px;
+}
+
 .hidden {
   display: none !important;
 }
 
+.login-screen,
 .welcome {
   min-height: calc(100vh - 48px);
   display: grid;
@@ -56,6 +97,7 @@ button {
   align-items: center;
 }
 
+.login-copy,
 .welcome-copy {
   max-width: 780px;
 }
@@ -92,7 +134,8 @@ h1 {
 
 .primary-action,
 .ghost-action,
-.status-button {
+.status-button,
+.icon-action {
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--text);
@@ -103,22 +146,65 @@ h1 {
   margin-top: 18px;
   padding: 14px 22px;
   border-color: transparent;
-  background: var(--blue);
+  background: var(--accent);
   color: white;
   font-weight: 800;
 }
 
-.ghost-action {
+.ghost-action,
+.icon-action {
   min-height: 40px;
   padding: 0 14px;
 }
 
+.icon-action {
+  background: var(--panel-solid);
+  box-shadow: 0 12px 34px var(--shadow);
+  font-weight: 800;
+}
+
+.auth-panel,
 .welcome-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 28px;
-  background: rgba(21, 23, 27, 0.86);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  background: var(--panel);
+  box-shadow: 0 24px 80px var(--shadow);
+}
+
+.auth-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-panel label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.auth-panel input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--bg) 72%, #000 28%);
+  color: var(--text);
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-message {
+  min-height: 1.3em;
+  margin: 0;
+  color: var(--red);
+  font-size: 0.86rem;
 }
 
 .welcome-panel span,
@@ -147,6 +233,7 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(21, 23, 27, 0.92);
+  background: var(--panel);
 }
 
 .topbar {
@@ -167,6 +254,15 @@ h1 {
   gap: 14px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.active-user {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .target-control {
@@ -208,7 +304,7 @@ input[type="range"] {
   margin: 14px 0 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: #303640;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .progress-fill {
@@ -336,7 +432,7 @@ input[type="range"] {
   aspect-ratio: 1;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: #111318;
+  background: color-mix(in srgb, var(--bg) 80%, #000 20%);
   color: var(--text);
   font-size: 0.78rem;
 }
@@ -450,6 +546,7 @@ input[type="range"] {
 }
 
 @media (max-width: 1080px) {
+  .login-screen,
   .welcome,
   .workspace {
     grid-template-columns: 1fr;
@@ -469,6 +566,16 @@ input[type="range"] {
 @media (max-width: 680px) {
   .app-shell {
     padding: 14px;
+    padding-top: 64px;
+  }
+
+  .login-screen,
+  .welcome {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-actions {
+    grid-template-columns: 1fr;
   }
 
   .topbar,
