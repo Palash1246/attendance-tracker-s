@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance Guard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="welcome" class="welcome">
+        <div class="welcome-copy">
+          <p class="eyebrow">Academy of Architecture - Sem V</p>
+          <h1>Keep your attendance safely above 75%.</h1>
+          <p>
+            Track each lecture, plan unavoidable bunks, and see how much room you
+            still have before the semester closes.
+          </p>
+          <button id="enterApp" class="primary-action">Open today</button>
+        </div>
+        <div class="welcome-panel">
+          <span>Today</span>
+          <strong id="welcomeDate">Monday, 15 June</strong>
+          <small id="welcomeHint">Your live schedule is ready.</small>
+        </div>
+      </section>
+
+      <section id="tracker" class="tracker hidden" aria-label="Attendance tracker">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Attendance Guard</p>
+            <h2 id="dayTitle">Today</h2>
+          </div>
+          <div class="topbar-actions">
+            <label class="target-control">
+              <span>Target</span>
+              <input id="targetAttendance" type="range" min="75" max="95" value="75" />
+              <strong id="targetLabel">75%</strong>
+            </label>
+            <button id="resetData" class="ghost-action">Reset marks</button>
+          </div>
+        </header>
+
+        <section class="summary-grid" id="summaryGrid"></section>
+
+        <section class="workspace">
+          <aside class="calendar-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Whole semester</p>
+                <h3>Months & dates</h3>
+              </div>
+              <span id="semesterRange"></span>
+            </div>
+            <div id="calendar" class="calendar"></div>
+          </aside>
+
+          <section class="day-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Selected day</p>
+                <h3 id="selectedDateTitle">Schedule</h3>
+              </div>
+              <button id="markDayBunk" class="ghost-action">Mandatory bunk day</button>
+            </div>
+            <div id="dayMeta" class="day-meta"></div>
+            <div id="scheduleList" class="schedule-list"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

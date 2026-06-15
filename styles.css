@@ -1,0 +1,506 @@
+:root {
+  color-scheme: dark;
+  --bg: #090a0d;
+  --panel: #15171b;
+  --panel-2: #1d2026;
+  --line: #30343c;
+  --muted: #9ca3af;
+  --text: #f5f7fb;
+  --red: #ff5f6d;
+  --green: #35d07f;
+  --blue: #4d8dff;
+  --yellow: #ffd84d;
+  --purple: #b56cff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(77, 141, 255, 0.13), transparent 28rem),
+    linear-gradient(135deg, #090a0d 0%, #111318 48%, #07080a 100%);
+  color: var(--text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.welcome {
+  min-height: calc(100vh - 48px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) 420px;
+  gap: 32px;
+  align-items: center;
+}
+
+.welcome-copy {
+  max-width: 780px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 18px;
+  font-size: clamp(3rem, 8vw, 6.8rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.welcome-copy > p:not(.eyebrow) {
+  max-width: 620px;
+  color: #c9ced8;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.primary-action,
+.ghost-action,
+.status-button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+.primary-action {
+  margin-top: 18px;
+  padding: 14px 22px;
+  border-color: transparent;
+  background: var(--blue);
+  color: white;
+  font-weight: 800;
+}
+
+.ghost-action {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.welcome-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 28px;
+  background: rgba(21, 23, 27, 0.86);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+.welcome-panel span,
+.welcome-panel small {
+  display: block;
+  color: var(--muted);
+}
+
+.welcome-panel strong {
+  display: block;
+  margin: 12px 0;
+  font-size: 2rem;
+}
+
+.tracker {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.topbar,
+.workspace,
+.summary-card,
+.calendar-panel,
+.day-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(21, 23, 27, 0.92);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  padding: 20px 24px;
+}
+
+.topbar h2,
+.panel-heading h3 {
+  margin: 0;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.target-control {
+  display: grid;
+  grid-template-columns: auto 180px 42px;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+input[type="range"] {
+  accent-color: var(--green);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  padding: 18px;
+}
+
+.summary-card h3 {
+  min-height: 2.8em;
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.course-code {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.progress-track {
+  height: 7px;
+  margin: 14px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #303640;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--yellow);
+}
+
+.progress-fill.good {
+  background: var(--green);
+}
+
+.progress-fill.danger {
+  background: var(--red);
+}
+
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+}
+
+.card-row strong {
+  color: var(--text);
+}
+
+.allowance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.metric-box {
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  text-align: center;
+}
+
+.metric-box span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.metric-box strong {
+  display: block;
+  color: var(--green);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.metric-box.must strong {
+  color: var(--blue);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(420px, 0.9fr) minmax(380px, 1.1fr);
+  overflow: hidden;
+}
+
+.calendar-panel,
+.day-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.calendar-panel {
+  border-right: 1px solid var(--line);
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  min-height: 82px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+#semesterRange,
+.day-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 20px;
+}
+
+.month h4 {
+  margin: 0 0 10px;
+}
+
+.weekdays,
+.dates {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.weekdays span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.date-button {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #111318;
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.date-button:hover,
+.date-button.selected {
+  border-color: var(--blue);
+}
+
+.date-button.today {
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.date-button.holiday {
+  color: var(--red);
+  background: rgba(255, 95, 109, 0.1);
+}
+
+.date-button.has-bunk::after,
+.date-button.has-mark::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--purple);
+}
+
+.date-button.has-mark::after {
+  background: var(--green);
+}
+
+.blank-date {
+  aspect-ratio: 1;
+}
+
+.day-meta {
+  padding: 14px 20px 0;
+}
+
+.schedule-list {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+
+.class-item {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.class-time {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.class-main strong {
+  display: block;
+}
+
+.class-main span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.class-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-button {
+  width: 38px;
+  height: 38px;
+  font-weight: 900;
+}
+
+.status-button.active.attended {
+  border-color: var(--green);
+  background: rgba(53, 208, 127, 0.18);
+  color: var(--green);
+}
+
+.status-button.active.missed {
+  border-color: var(--red);
+  background: rgba(255, 95, 109, 0.18);
+  color: var(--red);
+}
+
+.status-button.active.bunk {
+  border-color: var(--purple);
+  background: rgba(181, 108, 255, 0.18);
+  color: var(--purple);
+}
+
+.empty-state {
+  padding: 28px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .welcome,
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid,
+  .calendar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendar-panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 680px) {
+  .app-shell {
+    padding: 14px;
+  }
+
+  .topbar,
+  .panel-heading,
+  .class-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .topbar,
+  .panel-heading {
+    display: grid;
+  }
+
+  .summary-grid,
+  .calendar {
+    grid-template-columns: 1fr;
+  }
+
+  .target-control {
+    grid-template-columns: 1fr;
+  }
+
+  .class-item {
+    grid-template-columns: 1fr;
+  }
+
+  .class-actions {
+    justify-content: stretch;
+  }
+
+  .status-button {
+    flex: 1;
+  }
+}
