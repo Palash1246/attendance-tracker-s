@@ -1,55 +1,99 @@
+/* ─── FOREST THEME (default) ──────────────────────────────────────────────── */
 :root,
 body[data-theme="forest"] {
   color-scheme: dark;
-  --dark-green: #0a3323;
-  --moss-green: #839958;
-  --beige: #f7f4d5;
-  --rosy-brown: #d3968c;
+
+  /* palette */
+  --dark-green:     #0A3323;
+  --moss-green:     #839958;
+  --beige:          #F7F4D5;
+  --rosy-brown:     #D3968C;
   --midnight-green: #105666;
-  --bg: var(--dark-green);
-  --panel: color-mix(in srgb, var(--dark-green) 74%, var(--midnight-green) 26%);
-  --panel-solid: var(--midnight-green);
-  --panel-2: color-mix(in srgb, var(--midnight-green) 72%, var(--moss-green) 28%);
-  --line: color-mix(in srgb, var(--beige) 28%, var(--moss-green) 72%);
-  --muted: color-mix(in srgb, var(--beige) 70%, var(--moss-green) 30%);
-  --text: var(--beige);
-  --red: var(--rosy-brown);
-  --green: var(--moss-green);
-  --blue: var(--midnight-green);
-  --yellow: var(--beige);
+
+  /* surfaces */
+  --bg:           var(--dark-green);
+  --panel:        color-mix(in srgb, var(--dark-green) 62%, var(--midnight-green) 38%);
+  --panel-solid:  color-mix(in srgb, var(--midnight-green) 82%, var(--dark-green) 18%);
+  --panel-2:      color-mix(in srgb, var(--midnight-green) 60%, var(--moss-green) 40%);
+
+  /* borders & text */
+  --line:   color-mix(in srgb, var(--moss-green) 46%, var(--midnight-green) 54%);
+  --muted:  color-mix(in srgb, var(--beige) 62%, var(--moss-green) 38%);
+  --text:   var(--beige);
+
+  /*
+    Semantic colour roles
+    --red    → danger / missed / warning
+    --green  → positive / attended / can-bunk
+    --blue   → info / must-attend / selected borders  ← was midnight-green (#105666, near-black on dark panels)
+                now a light teal so it's actually readable as text
+    --yellow → neutral progress fill
+    --purple → bunk marker dot / mandatory bunk button
+  */
+  --red:    var(--rosy-brown);
+  --green:  var(--moss-green);
+  --blue:   color-mix(in srgb, var(--midnight-green) 50%, var(--beige) 50%);  /* ≈ #7BA0AB light teal */
+  --yellow: color-mix(in srgb, var(--beige) 84%, var(--rosy-brown) 16%);     /* warm off-white */
   --purple: var(--rosy-brown);
-  --accent: var(--moss-green);
+
+  /* accent (interactive highlights, primary buttons) */
+  --accent:        var(--moss-green);
   --accent-strong: var(--midnight-green);
+
   --shadow: color-mix(in srgb, var(--dark-green) 74%, transparent);
 }
 
+/* ─── ROSE THEME ──────────────────────────────────────────────────────────── */
 body[data-theme="rose"] {
-  --amaranth: #933b5b;
-  --thulian-pink: #b5728a;
-  --brook-green: #aabaae;
-  --chalk: #e3d6bf;
-  --pomelo-olive: #9f9679;
-  --bg: var(--amaranth);
-  --panel: color-mix(in srgb, var(--amaranth) 72%, var(--thulian-pink) 28%);
-  --panel-solid: var(--thulian-pink);
-  --panel-2: color-mix(in srgb, var(--pomelo-olive) 58%, var(--amaranth) 42%);
-  --line: color-mix(in srgb, var(--chalk) 36%, var(--pomelo-olive) 64%);
-  --muted: color-mix(in srgb, var(--chalk) 68%, var(--brook-green) 32%);
-  --text: var(--chalk);
-  --red: var(--thulian-pink);
-  --green: var(--brook-green);
-  --blue: var(--brook-green);
+  color-scheme: dark;
+
+  /* palette */
+  --amaranth:    #933B5B;
+  --thulian-pink:#B5728A;
+  --brook-green: #AABAAE;
+  --chalk:       #E3D6BF;
+  --pomelo-olive:#9F9679;
+
+  /* surfaces */
+  --bg:          var(--amaranth);
+  --panel:       color-mix(in srgb, var(--amaranth) 70%, var(--thulian-pink) 30%);
+  --panel-solid: color-mix(in srgb, var(--thulian-pink) 74%, var(--amaranth) 26%);
+  --panel-2:     color-mix(in srgb, var(--amaranth) 54%, var(--pomelo-olive) 46%);
+
+  /* borders & text */
+  --line:  color-mix(in srgb, var(--chalk) 22%, var(--pomelo-olive) 78%);
+  --muted: color-mix(in srgb, var(--chalk) 68%, var(--pomelo-olive) 32%);
+  --text:  var(--chalk);
+
+  /*
+    --red    → thulian-pink  (danger on dark pink bg)
+    --green  → brook-green   (sage — can bunk / attended)
+    --blue   → warm off-white blend  ← was also brook-green, identical to green
+                now clearly different: warm chalk-white makes "must attend" stand out
+    --yellow → pomelo-olive  (neutral progress fill)
+    --purple → thulian-pink  (bunk marker)
+
+    --accent  → thulian-pink  ← was amaranth (= --bg), so buttons were invisible
+                now a step lighter than the bg, clearly tappable
+  */
+  --red:    var(--thulian-pink);
+  --green:  var(--brook-green);
+  --blue:   color-mix(in srgb, var(--chalk) 80%, var(--brook-green) 20%);   /* ≈ #D3CEBF warm-white */
   --yellow: var(--pomelo-olive);
   --purple: var(--thulian-pink);
-  --accent: var(--amaranth);
+
+  --accent:        var(--thulian-pink);
   --accent-strong: var(--pomelo-olive);
+
   --shadow: color-mix(in srgb, var(--amaranth) 68%, transparent);
 }
 
+/* ─── RESET ───────────────────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
 
+/* ─── BASE ────────────────────────────────────────────────────────────────── */
 body {
   margin: 0;
   min-height: 100vh;
@@ -71,6 +115,7 @@ button {
   cursor: pointer;
 }
 
+/* ─── LAYOUT ──────────────────────────────────────────────────────────────── */
 .app-shell {
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -102,6 +147,7 @@ button {
   max-width: 780px;
 }
 
+/* ─── TYPE ────────────────────────────────────────────────────────────────── */
 .eyebrow {
   margin: 0 0 8px;
   color: var(--muted);
@@ -132,6 +178,7 @@ h1 {
   line-height: 1.7;
 }
 
+/* ─── BUTTONS ─────────────────────────────────────────────────────────────── */
 .primary-action,
 .ghost-action,
 .status-button,
@@ -163,6 +210,7 @@ h1 {
   font-weight: 800;
 }
 
+/* ─── AUTH PANEL ──────────────────────────────────────────────────────────── */
 .auth-panel,
 .welcome-panel {
   border: 1px solid var(--line);
@@ -219,6 +267,7 @@ h1 {
   font-size: 2rem;
 }
 
+/* ─── TRACKER ─────────────────────────────────────────────────────────────── */
 .tracker {
   display: flex;
   flex-direction: column;
@@ -277,6 +326,7 @@ input[type="range"] {
   accent-color: var(--green);
 }
 
+/* ─── SUMMARY GRID ────────────────────────────────────────────────────────── */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(210px, 1fr));
@@ -298,6 +348,7 @@ input[type="range"] {
   font-size: 0.76rem;
 }
 
+/* ─── PROGRESS BAR ────────────────────────────────────────────────────────── */
 .progress-track {
   height: 7px;
   margin: 14px 0 10px;
@@ -320,6 +371,7 @@ input[type="range"] {
   background: var(--red);
 }
 
+/* ─── CARD ROWS & ALLOWANCE ───────────────────────────────────────────────── */
 .card-row {
   display: flex;
   justify-content: space-between;
@@ -369,6 +421,7 @@ input[type="range"] {
   color: var(--blue);
 }
 
+/* ─── WORKSPACE ───────────────────────────────────────────────────────────── */
 .workspace {
   display: grid;
   grid-template-columns: minmax(420px, 0.9fr) minmax(380px, 1.1fr);
@@ -402,6 +455,7 @@ input[type="range"] {
   font-size: 0.85rem;
 }
 
+/* ─── CALENDAR ────────────────────────────────────────────────────────────── */
 .calendar {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -471,6 +525,7 @@ input[type="range"] {
   aspect-ratio: 1;
 }
 
+/* ─── DAY PANEL ───────────────────────────────────────────────────────────── */
 .day-meta {
   padding: 14px 20px 0;
 }
@@ -544,6 +599,7 @@ input[type="range"] {
   text-align: center;
 }
 
+/* ─── RESPONSIVE ──────────────────────────────────────────────────────────── */
 @media (max-width: 1080px) {
   .login-screen,
   .welcome,

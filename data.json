@@ -1,3 +1,40 @@
 {
-  "users": {}
+  "users": {
+    "test": {
+      "passwordAlgo": "scrypt",
+      "passwordSalt": "3347118ae4854a429dc83d164677e4b3",
+      "passwordHash": "8357e9986c94e98edf51349defc64e1b5c20f54bee709e795de27d8a39fd766fef71743263c9159ec61e7f6de85272c17c07a52a5ebc915048e7a06a35ae7077",
+      "state": {
+        "target": 75,
+        "records": {
+          "2026-06-16": {
+            "AD-7:30AM-10:30AM": {
+              "actual": "attended"
+            },
+            "HUM-11:00AM-2:00PM": {
+              "actual": "attended"
+            }
+          },
+          "2026-08-20": {
+            "ABC-7:30AM-10:30AM": {
+              "planned": "bunk"
+            },
+            "LAND-11:00AM-2:00PM": {
+              "planned": "bunk"
+            }
+          },
+          "2026-08-21": {
+            "HUM-7:30AM-10:30AM": {
+              "planned": "bunk"
+            },
+            "ABC-11:00AM-2:00PM": {
+              "planned": "bunk"
+            }
+          }
+        }
+      },
+      "createdAt": "2026-06-16T03:20:55.239Z",
+      "updatedAt": "2026-06-16T04:52:55.589Z"
+    }
+  }
 }
