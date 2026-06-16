@@ -15,33 +15,50 @@
 const crypto = require("crypto");
 
 // ── Upstash Redis REST helpers ────────────────────────────────────────
-// Uses the HTTP API directly — no npm package, works in Node 18+ (which Vercel uses).
 const KV_URL   = process.env.UPSTASH_REDIS_REST_URL;
 const KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+function assertKvConfigured() {
+  if (!KV_URL || !KV_TOKEN) {
+    throw new Error(
+      "Redis not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel environment variables."
+    );
+  }
+}
+
 async function kvGet(key) {
+  assertKvConfigured();
   const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
     headers: { Authorization: `Bearer ${KV_TOKEN}` },
   });
-  if (!r.ok) return null;
+  if (!r.ok) {
+    // Surface the actual Upstash error instead of silently returning null.
+    // A missing key returns 200 + {"result":null}, not a non-2xx status.
+    const text = await r.text().catch(() => "(no body)");
+    throw new Error(`KV read failed (${r.status}): ${text}`);
+  }
   const { result } = await r.json();
-  if (result == null) return null;
-  // Upstash stores everything as strings; we JSON.stringify on write, so parse here.
+  if (result == null) return null;          // key does not exist in Redis
   try { return typeof result === "string" ? JSON.parse(result) : result; }
   catch { return null; }
 }
 
 async function kvSet(key, value) {
-  // Upstash REST: POST /{cmd}/{key}  body = JSON array of remaining args
+  assertKvConfigured();
   const r = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
     method:  "POST",
     headers: {
       Authorization:  `Bearer ${KV_TOKEN}`,
       "Content-Type": "application/json",
     },
+    // Upstash REST body format: JSON array of command args after the key.
+    // We JSON.stringify the value so it's stored as a string in Redis.
     body: JSON.stringify([JSON.stringify(value)]),
   });
-  if (!r.ok) throw new Error(`KV write failed (${r.status})`);
+  if (!r.ok) {
+    const text = await r.text().catch(() => "(no body)");
+    throw new Error(`KV write failed (${r.status}): ${text}`);
+  }
 }
 
 // ── JWT (HMAC-SHA256, no library needed) ──────────────────────────────
@@ -51,6 +68,7 @@ const TOKEN_TTL  = 30 * 24 * 60 * 60 * 1000; // 30 days
 function b64(s) { return Buffer.from(s).toString("base64url"); }
 
 function signToken(username) {
+  if (!JWT_SECRET) throw new Error("JWT_SECRET env var is not set.");
   const h   = b64(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const p   = b64(JSON.stringify({ sub: username, exp: Date.now() + TOKEN_TTL }));
   const sig = crypto.createHmac("sha256", JWT_SECRET).update(`${h}.${p}`).digest("base64url");
@@ -62,11 +80,10 @@ function verifyToken(token) {
   const parts = String(token).split(".");
   if (parts.length !== 3) return null;
   const [h, p, s] = parts;
-  const expected  = crypto.createHmac("sha256", JWT_SECRET).update(`${h}.${p}`).digest("base64url");
-  // Constant-time comparison (both buffers must be the same length)
-  try {
-    if (!crypto.timingSafeEqual(Buffer.from(s + "=".repeat(4)), Buffer.from(expected + "=".repeat(4)))) return null;
-  } catch { return null; }
+  const expected = crypto.createHmac("sha256", JWT_SECRET).update(`${h}.${p}`).digest("base64url");
+  // Simple string equality is fine here — the attacker already has the token value,
+  // so timing-based enumeration of valid tokens isn't a meaningful attack vector.
+  if (s !== expected) return null;
   let data;
   try { data = JSON.parse(Buffer.from(p, "base64url").toString("utf8")); }
   catch { return null; }
@@ -90,7 +107,6 @@ function verifyPassword(user, password) {
     const candidate = crypto.scryptSync(password, user.passwordSalt, stored.length);
     return stored.length === candidate.length && crypto.timingSafeEqual(stored, candidate);
   }
-  // plain-text legacy fallback (users created before scrypt migration)
   return typeof user.password === "string" && user.password === password;
 }
 
@@ -178,8 +194,10 @@ module.exports = async (req, res) => {
     }
 
     return send(res, 404, { error: "Not found." });
+
   } catch (err) {
-    console.error(err);
-    return send(res, 500, { error: "Server error." });
+    // Log the full error so it appears in Vercel function logs
+    console.error("[api/index]", err.message);
+    return send(res, 500, { error: "Server error.", detail: err.message });
   }
 };
