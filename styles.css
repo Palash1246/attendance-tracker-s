@@ -1,4 +1,4 @@
-/* ─── FOREST THEME (default) ──────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════ FOREST THEME (default) */
 :root,
 body[data-theme="forest"] {
   color-scheme: dark;
@@ -10,236 +10,346 @@ body[data-theme="forest"] {
   --rosy-brown:     #D3968C;
   --midnight-green: #105666;
 
-  /* surfaces */
-  --bg:           var(--dark-green);
-  --panel:        color-mix(in srgb, var(--dark-green) 62%, var(--midnight-green) 38%);
-  --panel-solid:  color-mix(in srgb, var(--midnight-green) 82%, var(--dark-green) 18%);
-  --panel-2:      color-mix(in srgb, var(--midnight-green) 60%, var(--moss-green) 40%);
+  /* surfaces — all flat, no gradients */
+  --bg:          var(--dark-green);
+  --panel:       color-mix(in srgb, var(--dark-green) 56%, var(--midnight-green) 44%);
+  --panel-solid: var(--midnight-green);
+  --panel-2:     color-mix(in srgb, var(--dark-green) 72%, var(--midnight-green) 28%);
 
-  /* borders & text */
-  --line:   color-mix(in srgb, var(--moss-green) 46%, var(--midnight-green) 54%);
-  --muted:  color-mix(in srgb, var(--beige) 62%, var(--moss-green) 38%);
-  --text:   var(--beige);
+  /* type & borders */
+  --line:  color-mix(in srgb, var(--midnight-green) 68%, var(--moss-green) 32%);
+  --muted: color-mix(in srgb, var(--beige) 52%, var(--moss-green) 48%);
+  --text:  var(--beige);
 
-  /*
-    Semantic colour roles
-    --red    → danger / missed / warning
-    --green  → positive / attended / can-bunk
-    --blue   → info / must-attend / selected borders  ← was midnight-green (#105666, near-black on dark panels)
-                now a light teal so it's actually readable as text
-    --yellow → neutral progress fill
-    --purple → bunk marker dot / mandatory bunk button
+  /* semantic roles
+     --green  → attended / can-bunk / positive / accent
+     --red    → missed / danger / at-risk
+     --blue   → must-attend / selected / info  (light teal — readable on dark panels)
+     --yellow → neutral progress fill
+     --purple → bunk marker
   */
-  --red:    var(--rosy-brown);
   --green:  var(--moss-green);
-  --blue:   color-mix(in srgb, var(--midnight-green) 50%, var(--beige) 50%);  /* ≈ #7BA0AB light teal */
-  --yellow: color-mix(in srgb, var(--beige) 84%, var(--rosy-brown) 16%);     /* warm off-white */
+  --red:    var(--rosy-brown);
+  --blue:   color-mix(in srgb, var(--midnight-green) 42%, var(--beige) 58%);
+  --yellow: color-mix(in srgb, var(--beige) 80%, var(--rosy-brown) 20%);
   --purple: var(--rosy-brown);
 
-  /* accent (interactive highlights, primary buttons) */
   --accent:        var(--moss-green);
   --accent-strong: var(--midnight-green);
-
-  --shadow: color-mix(in srgb, var(--dark-green) 74%, transparent);
 }
 
-/* ─── ROSE THEME ──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════ ROSE THEME */
 body[data-theme="rose"] {
   color-scheme: dark;
 
   /* palette */
-  --amaranth:    #933B5B;
-  --thulian-pink:#B5728A;
-  --brook-green: #AABAAE;
-  --chalk:       #E3D6BF;
-  --pomelo-olive:#9F9679;
+  --amaranth:     #933B5B;
+  --thulian-pink: #B5728A;
+  --brook-green:  #AABAAE;
+  --chalk:        #E3D6BF;
+  --pomelo-olive: #9F9679;
 
-  /* surfaces */
+  /* surfaces — all flat */
   --bg:          var(--amaranth);
-  --panel:       color-mix(in srgb, var(--amaranth) 70%, var(--thulian-pink) 30%);
-  --panel-solid: color-mix(in srgb, var(--thulian-pink) 74%, var(--amaranth) 26%);
-  --panel-2:     color-mix(in srgb, var(--amaranth) 54%, var(--pomelo-olive) 46%);
+  --panel:       color-mix(in srgb, var(--amaranth) 66%, var(--thulian-pink) 34%);
+  --panel-solid: var(--thulian-pink);
+  --panel-2:     color-mix(in srgb, var(--amaranth) 80%, var(--pomelo-olive) 20%);
 
-  /* borders & text */
-  --line:  color-mix(in srgb, var(--chalk) 22%, var(--pomelo-olive) 78%);
-  --muted: color-mix(in srgb, var(--chalk) 68%, var(--pomelo-olive) 32%);
+  /* type & borders */
+  --line:  color-mix(in srgb, var(--thulian-pink) 60%, var(--pomelo-olive) 40%);
+  --muted: color-mix(in srgb, var(--chalk) 60%, var(--pomelo-olive) 40%);
   --text:  var(--chalk);
 
-  /*
-    --red    → thulian-pink  (danger on dark pink bg)
-    --green  → brook-green   (sage — can bunk / attended)
-    --blue   → warm off-white blend  ← was also brook-green, identical to green
-                now clearly different: warm chalk-white makes "must attend" stand out
-    --yellow → pomelo-olive  (neutral progress fill)
-    --purple → thulian-pink  (bunk marker)
-
-    --accent  → thulian-pink  ← was amaranth (= --bg), so buttons were invisible
-                now a step lighter than the bg, clearly tappable
+  /* semantic roles
+     --green  → brook-green (sage on pink — attended / can-bunk)
+     --red    → thulian-pink (danger on bg)
+     --blue   → warm chalk (distinct from green — must-attend)
+     --yellow → pomelo-olive (neutral)
+     --purple → thulian-pink (bunk marker)
+     --accent → thulian-pink (lighter than bg — buttons are visible)
   */
-  --red:    var(--thulian-pink);
   --green:  var(--brook-green);
-  --blue:   color-mix(in srgb, var(--chalk) 80%, var(--brook-green) 20%);   /* ≈ #D3CEBF warm-white */
+  --red:    var(--thulian-pink);
+  --blue:   color-mix(in srgb, var(--chalk) 78%, var(--brook-green) 22%);
   --yellow: var(--pomelo-olive);
   --purple: var(--thulian-pink);
 
   --accent:        var(--thulian-pink);
   --accent-strong: var(--pomelo-olive);
-
-  --shadow: color-mix(in srgb, var(--amaranth) 68%, transparent);
 }
 
-/* ─── RESET ───────────────────────────────────────────────────────────────── */
-* {
+/* ═══════════════════════════════════════════ RESET */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-}
-
-/* ─── BASE ────────────────────────────────────────────────────────────────── */
-body {
   margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 28rem),
-    linear-gradient(135deg, var(--bg) 0%, var(--panel-solid) 48%, color-mix(in srgb, var(--bg) 78%, var(--accent-strong) 22%) 100%);
-  color: var(--text);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  padding: 0;
 }
 
-button,
-input {
-  font: inherit;
+/* ═══════════════════════════════════════════ BASE */
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  background: var(--bg);        /* flat — no gradient */
+  color: var(--text);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
   cursor: pointer;
+  font: inherit;
 }
 
-/* ─── LAYOUT ──────────────────────────────────────────────────────────────── */
-.app-shell {
-  width: min(1440px, 100%);
-  margin: 0 auto;
-  padding: 24px;
+input {
+  font: inherit;
 }
 
-.corner-actions {
-  position: fixed;
-  z-index: 20;
-  top: 18px;
-  right: 18px;
+h1, h2, h3, h4 {
+  line-height: 1;
 }
 
+/* ═══════════════════════════════════════════ TYPOGRAPHY */
+
+/* IBM Plex Mono applied to everything data-flavoured */
+.wordmark,
+.topbar-day,
+.active-user,
+.target-value,
+.welcome-date,
+.welcome-hint,
+.welcome-semester,
+.field-label,
+.form-message,
+.day-meta,
+.panel-title,
+.course-code,
+.card-row strong,
+.metric-box strong,
+.metric-box span,
+.metric-box small,
+.class-time,
+.class-main span,
+.status-button,
+.date-button,
+.month h4,
+.weekdays span,
+.eyebrow {
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+h1 {
+  font-size: clamp(2.8rem, 7vw, 5.8rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  margin-bottom: 20px;
+}
+
+/* ═══════════════════════════════════════════ UTILITY */
 .hidden {
   display: none !important;
 }
 
-.login-screen,
-.welcome {
-  min-height: calc(100vh - 48px);
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) 420px;
-  gap: 32px;
-  align-items: center;
-}
-
-.login-copy,
-.welcome-copy {
-  max-width: 780px;
-}
-
-/* ─── TYPE ────────────────────────────────────────────────────────────────── */
-.eyebrow {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-h1,
-h2,
-h3,
-p {
-  margin-top: 0;
-}
-
-h1 {
-  margin-bottom: 18px;
-  font-size: clamp(3rem, 8vw, 6.8rem);
-  line-height: 0.95;
-  letter-spacing: 0;
-}
-
-.welcome-copy > p:not(.eyebrow) {
-  max-width: 620px;
-  color: var(--muted);
-  font-size: 1.1rem;
-  line-height: 1.7;
-}
-
-/* ─── BUTTONS ─────────────────────────────────────────────────────────────── */
-.primary-action,
-.ghost-action,
-.status-button,
-.icon-action {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--text);
-  background: var(--panel-2);
-}
-
+/* ═══════════════════════════════════════════ BUTTONS */
 .primary-action {
-  margin-top: 18px;
-  padding: 14px 22px;
-  border-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 3px;
   background: var(--accent);
   color: var(--text);
-  font-weight: 800;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: opacity 0.15s;
 }
 
-.ghost-action,
-.icon-action {
-  min-height: 40px;
-  padding: 0 14px;
+.primary-action:hover {
+  opacity: 0.82;
 }
 
-.icon-action {
-  background: var(--panel-solid);
-  box-shadow: 0 12px 34px var(--shadow);
-  font-weight: 800;
-}
-
-/* ─── AUTH PANEL ──────────────────────────────────────────────────────────── */
-.auth-panel,
-.welcome-panel {
+.ghost-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 28px;
-  background: var(--panel);
-  box-shadow: 0 24px 80px var(--shadow);
-}
-
-.auth-panel {
-  display: grid;
-  gap: 16px;
-}
-
-.auth-panel label {
-  display: grid;
-  gap: 8px;
+  border-radius: 3px;
+  background: transparent;
   color: var(--muted);
-  font-size: 0.84rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.ghost-action:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════ THEME TOGGLE (fixed overlay) */
+.theme-toggle {
+  position: fixed;
+  top: 11px;
+  right: 20px;
+  z-index: 200;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.theme-toggle:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+/* ═══════════════════════════════════════════ SCREEN SHELL */
+.screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top nav bar shared by auth + welcome ── */
+.screen-nav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 36px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text);
+}
+
+.prompt {
+  color: var(--green);
+  margin-right: 8px;
+}
+
+/* ═══════════════════════════════════════════ AUTH SCREEN */
+.auth-screen {
+  /* inherits .screen — flex column, min-height 100vh */
+}
+
+.auth-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 72px;
+  align-items: center;
+  padding: 56px 80px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.auth-copy h1 {
+  font-size: clamp(3rem, 6vw, 5rem);
+}
+
+.auth-desc {
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.75;
+  max-width: 440px;
+}
+
+/* ── Auth form panel ── */
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: var(--muted);
 }
 
 .auth-panel input {
   width: 100%;
-  min-height: 46px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  height: 40px;
   padding: 0 12px;
-  background: color-mix(in srgb, var(--bg) 72%, var(--accent-strong) 28%);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg);
   color: var(--text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.84rem;
+  transition: border-color 0.12s;
+}
+
+.auth-panel input:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+.auth-panel input::placeholder {
+  color: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+.form-message {
+  min-height: 1.1em;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--red);
 }
 
 .auth-actions {
@@ -248,193 +358,304 @@ h1 {
   gap: 10px;
 }
 
-.form-message {
-  min-height: 1.3em;
-  margin: 0;
-  color: var(--red);
-  font-size: 0.86rem;
+/* ═══════════════════════════════════════════ WELCOME SCREEN */
+.welcome-screen {
+  /* inherits .screen */
 }
 
-.welcome-panel span,
-.welcome-panel small {
-  display: block;
+.welcome-copy {
+  /* copy column inside welcome-body */
+}
+
+.welcome-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 72px;
+  align-items: center;
+  padding: 56px 80px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.welcome-desc {
   color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.75;
+  max-width: 500px;
+  margin-bottom: 28px;
 }
 
-.welcome-panel strong {
-  display: block;
-  margin: 12px 0;
-  font-size: 2rem;
-}
-
-/* ─── TRACKER ─────────────────────────────────────────────────────────────── */
-.tracker {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.topbar,
-.workspace,
-.summary-card,
-.calendar-panel,
-.day-panel {
+/* ── Info card ── */
+.welcome-card {
+  padding: 24px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 3px;
   background: var(--panel);
 }
 
+.welcome-date {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 10px 0 6px;
+  line-height: 1.4;
+}
+
+.welcome-hint {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.card-rule {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 18px 0 14px;
+}
+
+.welcome-semester {
+  font-size: 0.74rem;
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════ TRACKER SCREEN */
+.tracker-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ── */
 .topbar {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  padding: 20px 24px;
+  gap: 24px;
+  height: 52px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
 }
 
-.topbar h2,
-.panel-heading h3 {
-  margin: 0;
+.topbar-day {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.topbar-actions {
+.topbar-end {
   display: flex;
-  gap: 14px;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .active-user {
-  max-width: 180px;
-  overflow: hidden;
+  font-size: 0.7rem;
   color: var(--muted);
-  font-size: 0.86rem;
+  letter-spacing: 0.06em;
+  max-width: 140px;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.target-control {
+/* ── App body: sidebar + main ── */
+.app-body {
+  flex: 1;
   display: grid;
-  grid-template-columns: auto 180px 42px;
-  gap: 10px;
-  align-items: center;
-  color: var(--muted);
-  font-size: 0.85rem;
+  grid-template-columns: 200px 1fr;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  position: sticky;
+  top: 52px;
+  align-self: start;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-block {
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.target-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+  margin: 8px 0 12px;
 }
 
 input[type="range"] {
+  width: 100%;
   accent-color: var(--green);
+  cursor: pointer;
+  display: block;
+  margin-top: 4px;
 }
 
-/* ─── SUMMARY GRID ────────────────────────────────────────────────────────── */
+/* ── Main content ── */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content-header {
+  padding: 20px 24px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ═══════════════════════════════════════════ SUMMARY GRID (course cards) */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(210px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .summary-card {
-  padding: 18px;
+  padding: 18px 20px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
+/* Every 3rd card — no right border */
+.summary-card:nth-child(3n) {
+  border-right: none;
 }
 
 .summary-card h3 {
-  min-height: 2.8em;
-  margin-bottom: 8px;
-  font-size: 1rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .course-code {
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
-  font-size: 0.76rem;
+  display: block;
+  margin-bottom: 12px;
 }
 
-/* ─── PROGRESS BAR ────────────────────────────────────────────────────────── */
+/* ── Progress bar: sharp, flat, terminal ── */
 .progress-track {
-  height: 7px;
-  margin: 14px 0 10px;
+  height: 2px;
+  background: color-mix(in srgb, var(--line) 60%, transparent);
+  margin-bottom: 12px;
   overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: inherit;
   background: var(--yellow);
+  transition: width 0.25s ease;
 }
 
-.progress-fill.good {
-  background: var(--green);
-}
+.progress-fill.good   { background: var(--green); }
+.progress-fill.danger { background: var(--red); }
 
-.progress-fill.danger {
-  background: var(--red);
-}
-
-/* ─── CARD ROWS & ALLOWANCE ───────────────────────────────────────────────── */
+/* ── Card stat rows ── */
 .card-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 54%, transparent);
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 36%, transparent);
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
-.card-row strong {
-  color: var(--text);
+.card-row:last-child {
+  border-bottom: none;
 }
 
+.card-row strong {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+/* ── Can-bunk / must-attend boxes ── */
 .allowance {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 14px 0;
+  gap: 8px;
+  margin: 10px 0;
 }
 
 .metric-box {
-  min-height: 92px;
-  display: grid;
-  place-items: center;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
   background: var(--panel-2);
   text-align: center;
 }
 
 .metric-box span {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 3px;
 }
 
 .metric-box strong {
   display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--green);
-  font-size: 2rem;
   line-height: 1;
+}
+
+.metric-box small {
+  font-size: 0.58rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
 }
 
 .metric-box.must strong {
   color: var(--blue);
 }
 
-/* ─── WORKSPACE ───────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════ WORKSPACE */
 .workspace {
   display: grid;
-  grid-template-columns: minmax(420px, 0.9fr) minmax(380px, 1.1fr);
-  overflow: hidden;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(260px, 1.15fr);
+  flex: 1;
+  border-top: 1px solid var(--line);
 }
 
-.calendar-panel,
-.day-panel {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
+/* ── Calendar panel ── */
 .calendar-panel {
   border-right: 1px solid var(--line);
 }
@@ -442,77 +663,100 @@ input[type="range"] {
 .panel-heading {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
   align-items: center;
-  min-height: 82px;
-  padding: 18px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 52px;
+  background: var(--bg);
+  z-index: 5;
 }
 
-#semesterRange,
-.day-meta {
-  color: var(--muted);
-  font-size: 0.85rem;
+.panel-heading .eyebrow {
+  margin: 0;
 }
 
-/* ─── CALENDAR ────────────────────────────────────────────────────────────── */
+.panel-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+/* ── Calendar months ── */
 .calendar {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding: 20px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding: 18px 20px;
 }
 
 .month h4 {
-  margin: 0 0 10px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
 }
 
 .weekdays,
 .dates {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
+  gap: 3px;
 }
 
 .weekdays span {
+  font-size: 0.58rem;
   color: var(--muted);
-  font-size: 0.7rem;
   text-align: center;
+  padding-bottom: 4px;
+  letter-spacing: 0.06em;
 }
 
 .date-button {
   position: relative;
   aspect-ratio: 1;
   border: 1px solid transparent;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg) 80%, var(--accent-strong) 20%);
-  color: var(--text);
-  font-size: 0.78rem;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
 }
 
-.date-button:hover,
+.date-button:hover {
+  border-color: var(--line);
+  color: var(--text);
+}
+
 .date-button.selected {
-  border-color: var(--blue);
+  border-color: var(--green);
+  color: var(--text);
 }
 
 .date-button.today {
-  color: var(--blue);
-  font-weight: 900;
+  color: var(--green);
+  font-weight: 700;
 }
 
 .date-button.holiday {
   color: var(--red);
-  background: color-mix(in srgb, var(--red) 18%, transparent);
 }
 
+/* dot indicators */
 .date-button.has-bunk::after,
 .date-button.has-mark::after {
   content: "";
   position: absolute;
-  right: 5px;
-  bottom: 5px;
-  width: 5px;
-  height: 5px;
+  right: 2px;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: var(--purple);
 }
@@ -525,144 +769,216 @@ input[type="range"] {
   aspect-ratio: 1;
 }
 
-/* ─── DAY PANEL ───────────────────────────────────────────────────────────── */
+/* ── Day panel ── */
+.day-panel {
+  display: flex;
+  flex-direction: column;
+}
+
 .day-meta {
-  padding: 14px 20px 0;
+  padding: 12px 20px 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
 }
 
 .schedule-list {
-  display: grid;
-  gap: 12px;
-  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 14px 20px 20px;
 }
 
+/* ── Class items ── */
 .class-item {
   display: grid;
-  grid-template-columns: 110px 1fr auto;
+  grid-template-columns: 96px 1fr auto;
   gap: 16px;
   align-items: center;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-2);
+  padding: 13px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 44%, transparent);
+}
+
+.class-item:last-child {
+  border-bottom: none;
 }
 
 .class-time {
+  font-size: 0.68rem;
   color: var(--muted);
-  font-size: 0.82rem;
+  line-height: 1.7;
+  letter-spacing: 0.03em;
 }
 
 .class-main strong {
   display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
 }
 
 .class-main span {
+  font-size: 0.64rem;
   color: var(--muted);
-  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .class-actions {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   align-items: center;
 }
 
+/* ── A / M / B status buttons ── */
 .status-button {
-  width: 38px;
-  height: 38px;
-  font-weight: 900;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+
+.status-button:hover {
+  color: var(--text);
+  border-color: var(--text);
 }
 
 .status-button.active.attended {
   border-color: var(--green);
-  background: color-mix(in srgb, var(--green) 22%, transparent);
+  background: color-mix(in srgb, var(--green) 14%, transparent);
   color: var(--green);
 }
 
 .status-button.active.missed {
   border-color: var(--red);
-  background: color-mix(in srgb, var(--red) 22%, transparent);
+  background: color-mix(in srgb, var(--red) 14%, transparent);
   color: var(--red);
 }
 
 .status-button.active.bunk {
   border-color: var(--purple);
-  background: color-mix(in srgb, var(--purple) 22%, transparent);
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
   color: var(--purple);
 }
 
+/* ── Empty state ── */
 .empty-state {
-  padding: 28px;
+  padding: 28px 16px;
   border: 1px dashed var(--line);
-  border-radius: 8px;
+  border-radius: 2px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
   color: var(--muted);
   text-align: center;
+  margin-top: 6px;
 }
 
-/* ─── RESPONSIVE ──────────────────────────────────────────────────────────── */
-@media (max-width: 1080px) {
-  .login-screen,
-  .welcome,
+/* ═══════════════════════════════════════════ RESPONSIVE */
+
+/* ─ 3-col → 2-col course cards at medium widths */
+@media (max-width: 1100px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .summary-card:nth-child(3n) {
+    border-right: 1px solid var(--line);
+  }
+
+  .summary-card:nth-child(2n) {
+    border-right: none;
+  }
+}
+
+/* ─ Stack auth/welcome columns on tablet */
+@media (max-width: 900px) {
+  .auth-body,
+  .welcome-body {
+    grid-template-columns: 1fr;
+    padding: 36px 32px;
+    gap: 36px;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
   }
 
-  .summary-grid,
-  .calendar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .calendar-panel {
-    border-right: 0;
+    border-right: none;
     border-bottom: 1px solid var(--line);
   }
 }
 
-@media (max-width: 680px) {
-  .app-shell {
-    padding: 14px;
-    padding-top: 64px;
+/* ─ Collapse sidebar on small screens */
+@media (max-width: 720px) {
+  .app-body {
+    grid-template-columns: 1fr;
   }
 
-  .login-screen,
-  .welcome {
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .sidebar-block {
+    flex: 1 1 160px;
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+
+  .sidebar-block:last-child {
+    border-right: none;
+  }
+
+  .summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .summary-card:nth-child(n) {
+    border-right: none;
+  }
+
+  .topbar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .topbar-day {
+    display: none;
+  }
+
+  .class-item {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .class-actions {
+    justify-content: flex-start;
+  }
+
+  .status-button {
+    flex: 1;
+    max-width: 56px;
   }
 
   .auth-actions {
     grid-template-columns: 1fr;
   }
 
-  .topbar,
-  .panel-heading,
-  .class-item {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .topbar,
-  .panel-heading {
-    display: grid;
-  }
-
-  .summary-grid,
-  .calendar {
-    grid-template-columns: 1fr;
-  }
-
-  .target-control {
-    grid-template-columns: 1fr;
-  }
-
-  .class-item {
-    grid-template-columns: 1fr;
-  }
-
-  .class-actions {
-    justify-content: stretch;
-  }
-
-  .status-button {
-    flex: 1;
+  .screen-nav,
+  .topbar {
+    padding: 0 18px;
   }
 }
