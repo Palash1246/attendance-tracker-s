@@ -166,39 +166,47 @@
         <!-- Main content area -->
         <main class="main-content">
 
-          <!-- Course summary rows -->
-          <section aria-label="Course summary">
-            <div class="content-header">
-              <p class="eyebrow">Courses</p>
-            </div>
-            <div id="summaryGrid" class="summary-grid"></div>
-          </section>
-
-          <!-- Calendar + day panel side by side -->
-          <div class="workspace">
-
-            <aside class="calendar-panel" aria-label="Semester calendar">
-              <div class="panel-heading">
-                <p class="eyebrow">Semester calendar</p>
-              </div>
-              <div id="calendar" class="calendar"></div>
-            </aside>
-
-            <section class="day-panel" aria-label="Day schedule">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Selected day</p>
-                  <h3 id="selectedDateTitle" class="panel-title"></h3>
-                </div>
-                <button id="markDayBunk" class="ghost-action">
-                  Bunk day
-                </button>
-              </div>
-              <p id="dayMeta" class="day-meta"></p>
-              <div id="scheduleList" class="schedule-list"></div>
-            </section>
-
+          <!-- Tab navigation -->
+          <div class="content-header">
+            <nav class="view-tabs" role="tablist" aria-label="Main view">
+              <button id="tabTracker" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="trackerView">Courses</button>
+              <button id="tabWeek"    class="tab-btn"            role="tab" aria-selected="false" data-panel="weeklyPanel">Schedule</button>
+            </nav>
           </div>
+
+          <!-- Tracker view: course cards + calendar workspace -->
+          <div id="trackerView">
+            <div id="summaryGrid" class="summary-grid"></div>
+
+            <div class="workspace">
+
+              <aside class="calendar-panel" aria-label="Semester calendar">
+                <div class="panel-heading">
+                  <p class="eyebrow">Semester calendar</p>
+                </div>
+                <div id="calendar" class="calendar"></div>
+              </aside>
+
+              <section class="day-panel" aria-label="Day schedule">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Selected day</p>
+                    <h3 id="selectedDateTitle" class="panel-title"></h3>
+                  </div>
+                  <button id="markDayBunk" class="ghost-action">
+                    Bunk day
+                  </button>
+                </div>
+                <p id="dayMeta" class="day-meta"></p>
+                <div id="scheduleList" class="schedule-list"></div>
+              </section>
+
+            </div>
+          </div>
+
+          <!-- Weekly schedule panel -->
+          <div id="weeklyPanel" class="weekly-panel hidden"></div>
+
         </main>
 
       </div>

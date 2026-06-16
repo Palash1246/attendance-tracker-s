@@ -19,36 +19,35 @@ const holidays = [
 ];
 
 const courses = {
-  AD: { name: "Architectural Design", code: "B. Arch Sem V" },
+  AD:  { name: "Architectural Design",                    code: "Studio" },
   ABC: { name: "Architectural Building Construction III", code: "Studio + lecture" },
-  HUM: { name: "Humanities", code: "Sem V" },
-  ARD: { name: "Architectural Representation & Detailing", code: "Sem V" },
-  LAND: { name: "Landscape & Design of Gardens", code: "Sem V" },
-  CF: { name: "College Facilities", code: "Sem V" },
+  HUM: { name: "Humanities",                              code: "Lecture" },
+  ARD: { name: "Architectural Representation & Detailing", code: "Studio" },
+  TDS: { name: "Theory & Design of Structures",           code: "Lecture" },
+  CF:  { name: "College Projects",                        code: "Sem V" },
 };
 
 const weeklySchedule = {
-  1: [
-    { course: "ABC", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
-    { course: "ARD", start: "11:00 AM", end: "2:00 PM", type: "Studio" },
+  1: [ // Monday
+    { course: "ARD", start: "7:50 AM", end: "10:20 AM", type: "Studio" },
+    { course: "ARD", start: "11:00 AM", end: "2:00 PM",  type: "Studio" },
   ],
-  2: [
-    { course: "AD", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
-    { course: "HUM", start: "11:00 AM", end: "2:00 PM", type: "Lecture" },
+  2: [ // Tuesday
+    { course: "AD",  start: "7:50 AM", end: "10:20 AM", type: "Studio" },
+    { course: "HUM", start: "11:00 AM", end: "2:00 PM",  type: "Lecture" },
   ],
-  3: [
-    { course: "AD", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
-    { course: "AD", start: "11:00 AM", end: "2:00 PM", type: "Studio" },
+  3: [ // Wednesday
+    { course: "ABC", start: "7:50 AM", end: "10:20 AM", type: "Studio" },
+    { course: "AD",  start: "11:00 AM", end: "2:00 PM",  type: "Studio" },
   ],
-  4: [
-    { course: "ABC", start: "7:30 AM", end: "10:30 AM", type: "Lecture / studio" },
-    { course: "LAND", start: "11:00 AM", end: "2:00 PM", type: "Lecture / studio" },
+  4: [ // Thursday
+    { course: "ABC", start: "7:50 AM", end: "10:20 AM", type: "Lecture / studio" },
+    { course: "TDS", start: "11:00 AM", end: "2:00 PM",  type: "Lecture" },
   ],
-  5: [
-    { course: "HUM", start: "7:30 AM", end: "10:30 AM", type: "Lecture" },
-    { course: "ABC", start: "11:00 AM", end: "2:00 PM", type: "Lecture" },
+  5: [ // Friday
+    { course: "AD",  start: "7:50 AM", end: "10:20 AM", type: "Studio" },
+    { course: "CF",  start: "11:00 AM", end: "2:00 PM",  type: "Lecture block" },
   ],
-  6: [{ course: "CF", start: "8:45 AM", end: "2:20 PM", type: "Lecture block" }],
 };
 
 const holidayMap = new Map(holidays);
@@ -104,6 +103,9 @@ const els = {
   resetData: document.querySelector("#resetData"),
   activeUser: document.querySelector("#activeUser"),
   logout: document.querySelector("#logout"),
+  // week view
+  trackerView: document.querySelector("#trackerView"),
+  weeklyPanel: document.querySelector("#weeklyPanel"),
   // event modal
   fabAddEvent:      document.querySelector("#fabAddEvent"),
   eventModal:       document.querySelector("#eventModal"),
@@ -140,6 +142,11 @@ function bindGlobalEvents() {
   els.themeToggle.addEventListener("click", () => {
     const nextTheme = document.body.dataset.theme === "forest" ? "rose" : "forest";
     applyTheme(nextTheme);
+  });
+
+  // ── Tab buttons ──
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.panel));
   });
 
   els.authForm.addEventListener("submit", async (event) => {
@@ -605,6 +612,96 @@ function closeEventModal() {
 
 function deleteEvent(id) {
   state.events = (state.events || []).filter((ev) => ev.id !== id);
+}
+
+// ─────────────────────────────────── TAB SWITCHING
+function switchTab(panelId) {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    const active = btn.dataset.panel === panelId;
+    btn.classList.toggle("tab-active", active);
+    btn.setAttribute("aria-selected", active);
+  });
+  els.trackerView.classList.toggle("hidden", panelId !== "trackerView");
+  els.weeklyPanel.classList.toggle("hidden",  panelId !== "weeklyPanel");
+  if (panelId === "weeklyPanel") renderWeekly();
+}
+
+// ─────────────────────────────────── WEEKLY SCHEDULE VIEW
+function renderWeekly() {
+  // Monday of the current week
+  const today = getInitialDate();
+  const dow = today.getDay();
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const weekStart = addDays(today, mondayOffset);
+
+  const DAY_META = [
+    { index: 1, label: "MON", full: "Monday"    },
+    { index: 2, label: "TUE", full: "Tuesday"   },
+    { index: 3, label: "WED", full: "Wednesday" },
+    { index: 4, label: "THU", full: "Thursday"  },
+    { index: 5, label: "FRI", full: "Friday"    },
+  ];
+
+  els.weeklyPanel.innerHTML = `
+    <div class="week-header-row">
+      <p class="eyebrow">Weekly schedule</p>
+      <span class="week-week-label">
+        ${shortDate(weekStart)} – ${shortDate(addDays(weekStart, 4))}
+      </span>
+    </div>
+    <div class="week-container">
+      ${DAY_META.map(({ index, label, full }) => {
+        const date    = addDays(weekStart, index - 1);
+        const dateKey = toKey(date);
+        const isToday = dateKey === toKey(today);
+        const isHol   = holidayMap.has(dateKey);
+        const slots   = weeklySchedule[index] || [];
+
+        return `
+          <div class="week-day-col${isToday ? " week-today" : ""}${isHol ? " week-holiday" : ""}"
+               data-date="${dateKey}"
+               title="Go to ${full}">
+            <div class="week-day-head">
+              <span class="week-day-label">${label}</span>
+              <span class="week-day-date">${date.getDate()} ${monthNames[date.getMonth()].slice(0, 3)}</span>
+              ${isToday ? "<span class=\"week-today-pip\"></span>" : ""}
+              ${isHol   ? `<span class="week-hol-tag">${holidayMap.get(dateKey)}</span>` : ""}
+            </div>
+            <div class="week-slots">
+              ${isHol
+                ? `<div class="week-slot week-slot-holiday">
+                     <span class="week-slot-name">Holiday</span>
+                     <span class="week-slot-sub">${holidayMap.get(dateKey)}</span>
+                   </div>`
+                : slots.length
+                  ? slots.map(cls => `
+                      <div class="week-slot" data-course="${cls.course}">
+                        <span class="week-slot-time">${cls.start} – ${cls.end}</span>
+                        <strong class="week-slot-name">${courses[cls.course].name}</strong>
+                        <span class="week-slot-sub">${cls.type}</span>
+                      </div>`).join("")
+                  : `<div class="week-slot week-slot-empty">
+                       <span class="week-slot-name">No classes</span>
+                     </div>`
+              }
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+
+  // Click a day column → jump to that date in the courses/calendar tab
+  els.weeklyPanel.querySelectorAll(".week-day-col").forEach((col) => {
+    col.addEventListener("click", () => {
+      const date = parseDate(col.dataset.date);
+      const start = parseDate(semester.start);
+      const end   = parseDate(semester.end);
+      if (date >= start && date <= end) selectedDate = date;
+      switchTab("trackerView");
+      render();
+    });
+  });
 }
 
 function getClassesForDate(date) {
