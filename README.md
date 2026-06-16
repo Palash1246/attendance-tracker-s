@@ -183,26 +183,28 @@ const semester = {
 
 ### Courses
 
-| Code | Name |
-|---|---|
-| `AD` | Architectural Design |
-| `ABC` | Architectural Building Construction III |
-| `HUM` | Humanities |
-| `ARD` | Architectural Representation & Detailing |
-| `LAND` | Landscape & Design of Gardens |
-| `CF` | College Facilities |
+| Code | Name | Type |
+|---|---|---|
+| `AD`  | Architectural Design | Studio |
+| `ABC` | Architectural Building Construction III | Studio + lecture |
+| `HUM` | Humanities | Lecture |
+| `ARD` | Architectural Representation & Detailing | Studio |
+| `AT3` | Architectural Theory 3 | Lecture |
+| `ABS` | Architectural Building Services | Studio |
+| `ALD` | Landscaping & Allied Design | Studio |
+| `TDS` | Theory & Design of Structures | Lecture |
+| `CF`  | College Projects | — |
 
 ### Weekly Schedule
 
-| Day | Slot 1 (7:30 – 10:30) | Slot 2 (11:00 – 14:00) |
-|---|---|---|
-| Monday | ABC Studio | ARD Studio |
-| Tuesday | AD Studio | HUM Lecture |
-| Wednesday | AD Studio | AD Studio |
-| Thursday | ABC Lecture/Studio | LAND Lecture/Studio |
-| Friday | HUM Lecture | ABC Lecture |
-| Saturday | CF Lecture block (8:45 – 14:20) | — |
-| Sunday | — | — |
+| Day | Slot 1 (7:50 – 10:20) | Slot 2 (11:00 – 12:30 / 2:00) | Slot 3 |
+|---|---|---|---|
+| Monday | ARD Studio | ARD Studio (ends 12:30) | AT3 Lecture (12:30 – 2:00) |
+| Tuesday | AD Studio | HUM Lecture | — |
+| Wednesday | ABS Studio | ALD Studio | — |
+| Thursday | ABC Lecture/Studio | TDS Lecture | — |
+| Friday | AD Studio | CF (College Projects) | — |
+| Sunday | — | — | — |
 
 ### Holidays
 
@@ -245,3 +247,84 @@ The CSS theming system lives entirely in `styles.css` under the `:root` / `body[
 ## License
 
 Private repository — all rights reserved.
+
+---
+
+## Changelog
+
+### UI redesign
+
+- Replaced all gradient-based styles with a flat dark surface design inspired by rig.ai.
+- Typography switched to **IBM Plex Mono** (monospace headings / labels) + **Inter** (body).
+- All layout gradients removed; colours are now flat, solid, and role-specific.
+- Per-course **accent strips** (3 px left border) added to every card, class item, and schedule slot. Each course has its own unique colour that is consistent across all views.
+- Two colour themes: **Forest** (dark green) and **Rose** (deep pink), toggled from the top bar.
+- Sidebar and main content panels separated by 1 px borders — no box-shadows, no glows.
+
+### New features
+
+#### + Event / task button
+- A floating action button (FAB `+`) appears in the bottom-right corner once you are logged in.
+- Opens a modal dialog to schedule an event or task for any date.
+- Fields: **Name**, **Date** (pre-filled to the currently selected calendar day), **Time** (hidden when "All day" is checked).
+- Events are stored in `state.events[]` and persist alongside attendance records.
+- Events appear below the class list in the day panel and can be deleted with the × button.
+
+#### Weekly schedule view
+- A **Schedule** tab next to the **Courses** tab shows the full weekly timetable for the current week.
+- Each weekday is a column showing the actual date, course name, time range, and type (Studio / Lecture).
+- Today's column is highlighted in green.
+- Holiday detection: if a day falls on a holiday the slot shows the holiday name in red.
+- Clicking any day column switches back to the Courses tab and selects that day in the calendar.
+
+### Schedule corrections (Sem V, Batch 2026–27)
+
+The following corrections were made to the weekly timetable based on the official ACED schedule:
+
+| Day | Before | After |
+|---|---|---|
+| Monday AM | ABC Studio | ARD Studio |
+| Monday PM | ARD Studio (11:00–2:00) | ARD Studio (11:00–12:30) + AT3 Lecture (12:30–2:00) |
+| Wednesday AM | ABC Studio | ABS (Building Services) Studio |
+| Wednesday PM | AD Studio | ALD (Landscaping) Studio |
+| Thursday PM | LAND (elective, removed) | TDS (Theory & Design of Structures) |
+| Friday AM | HUM Lecture | AD Studio |
+| Friday PM | ABC Lecture | CF (College Projects) |
+| Saturday | CF all-day | Removed (electives over) |
+
+New courses added:
+
+| Code | Name |
+|---|---|
+| `AT3` | Architectural Theory 3 |
+| `ABS` | Architectural Building Services |
+| `ALD` | Landscaping & Allied Design |
+| `TDS` | Theory & Design of Structures |
+
+Removed courses: `LAND` (Landscape & Design of Gardens — elective, semester ended).
+
+### Vercel deployment
+
+The app is now deployable on **Vercel** (serverless). The following files were added:
+
+| File | Purpose |
+|---|---|
+| `api/index.js` | Serverless function handling all `/api/*` routes |
+| `vercel.json` | Routes `/api/*` to `api/index.js`; static files served automatically |
+
+Two architectural changes were required for serverless compatibility:
+
+| Problem | Old approach | New approach |
+|---|---|---|
+| Sessions | In-memory `Map` (lost on cold start) | **HMAC-SHA256 JWT** (stateless, self-contained) |
+| User data | `data.json` file writes (ephemeral on Vercel) | **Upstash Redis** REST API (persistent) |
+
+`server.js` is **unchanged** and still used for local development (`node server.js`).
+
+Required environment variables on Vercel:
+
+| Variable | Where to get it |
+|---|---|
+| `JWT_SECRET` | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `UPSTASH_REDIS_REST_URL` | Vercel dashboard → Storage → Upstash Redis integration |
+| `UPSTASH_REDIS_REST_TOKEN` | Same as above |
