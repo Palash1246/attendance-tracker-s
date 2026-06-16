@@ -14,8 +14,7 @@
   </head>
   <body>
 
-    <!-- Always-on theme toggle — sits above all screens -->
-    <button id="themeToggle" class="theme-toggle" title="Switch theme">Forest</button>
+    <!-- Theme toggle is now inside the tracker topbar (topbar-end) -->
 
     <!-- ═══════════════════════════════════════════ AUTH SCREEN -->
     <section id="login" class="screen auth-screen" aria-label="Sign in">
@@ -132,6 +131,7 @@
         <span id="dayTitle" class="topbar-day"></span>
         <div class="topbar-end">
           <span id="activeUser" class="active-user"></span>
+          <button id="themeToggle" class="ghost-action theme-toggle" title="Switch theme">Forest</button>
           <button id="logout" class="ghost-action">Log out</button>
         </div>
       </nav>
