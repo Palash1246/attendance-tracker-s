@@ -4,107 +4,205 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Attendance Guard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <div class="corner-actions">
-        <button id="themeToggle" class="icon-action" title="Switch theme">Theme A</button>
-      </div>
 
-      <section id="login" class="login-screen" aria-label="Login">
-        <div class="login-copy">
-          <p class="eyebrow">Attendance Guard</p>
-          <h1>Sign in to your semester.</h1>
-          <p>
-            Use a unique username so each person gets their own tracker on this
-            shared attendance app.
+    <!-- Always-on theme toggle — sits above all screens -->
+    <button id="themeToggle" class="theme-toggle" title="Switch theme">Forest</button>
+
+    <!-- ═══════════════════════════════════════════ AUTH SCREEN -->
+    <section id="login" class="screen auth-screen" aria-label="Sign in">
+
+      <header class="screen-nav">
+        <span class="wordmark">
+          <span class="prompt" aria-hidden="true">λ</span>
+          ATTENDANCE GUARD
+        </span>
+      </header>
+
+      <div class="auth-body">
+
+        <div class="auth-copy">
+          <p class="eyebrow">Academy of Architecture · Sem V</p>
+          <h1>Keep your<br>attendance<br>above&nbsp;75%.</h1>
+          <p class="auth-desc">
+            Track each lecture, plan unavoidable bunks, and see exactly how much
+            room you have before the semester closes.
           </p>
         </div>
-        <form id="authForm" class="auth-panel">
-          <div>
-            <p class="eyebrow">Login / Register</p>
-            <h2>Continue</h2>
-          </div>
-          <label>
-            <span>Username</span>
-            <input id="username" name="username" autocomplete="username" required minlength="3" />
+
+        <form id="authForm" class="auth-panel" novalidate>
+          <p class="eyebrow">Access terminal</p>
+
+          <label class="field">
+            <span class="field-label">USERNAME</span>
+            <input
+              id="username"
+              name="username"
+              autocomplete="username"
+              required
+              minlength="3"
+              placeholder="your_username"
+              spellcheck="false"
+            />
           </label>
-          <label>
-            <span>Password</span>
-            <input id="password" name="password" type="password" autocomplete="current-password" required minlength="3" />
+
+          <label class="field">
+            <span class="field-label">PASSWORD</span>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              minlength="3"
+              placeholder="min. 3 characters"
+            />
           </label>
-          <p id="authMessage" class="form-message"></p>
+
+          <p id="authMessage" class="form-message" role="alert"></p>
+
           <div class="auth-actions">
-            <button id="loginButton" class="primary-action" type="button">Log in</button>
-            <button id="registerButton" class="ghost-action" type="button">Create user</button>
+            <button id="loginButton" class="primary-action" type="button">
+              Log in →
+            </button>
+            <button id="registerButton" class="ghost-action" type="button">
+              Create user
+            </button>
           </div>
         </form>
-      </section>
 
-      <section id="welcome" class="welcome hidden">
+      </div>
+    </section>
+
+
+    <!-- ═══════════════════════════════════════════ WELCOME SCREEN -->
+    <section id="welcome" class="screen welcome-screen hidden" aria-label="Welcome">
+
+      <header class="screen-nav">
+        <span class="wordmark">
+          <span class="prompt" aria-hidden="true">λ</span>
+          ATTENDANCE GUARD
+        </span>
+      </header>
+
+      <div class="welcome-body">
+
         <div class="welcome-copy">
-          <p class="eyebrow">Academy of Architecture - Sem V</p>
-          <h1>Keep your attendance safely above 75%.</h1>
-          <p>
-            Track each lecture, plan unavoidable bunks, and see how much room you
-            still have before the semester closes.
+          <p class="eyebrow">Academy of Architecture · Sem V</p>
+          <h1>Keep your attendance safely above&nbsp;75%.</h1>
+          <p class="welcome-desc">
+            Track each lecture, plan unavoidable bunks, and see how much room
+            you still have before the semester closes.
           </p>
-          <button id="enterApp" class="primary-action">Open today</button>
+          <button id="enterApp" class="primary-action">Open tracker →</button>
         </div>
-        <div class="welcome-panel">
-          <span>Today</span>
-          <strong id="welcomeDate">Monday, 15 June</strong>
-          <small id="welcomeHint">Your live schedule is ready.</small>
+
+        <div class="welcome-card">
+          <p class="eyebrow">Today's briefing</p>
+          <strong id="welcomeDate" class="welcome-date"></strong>
+          <small id="welcomeHint" class="welcome-hint"></small>
+          <hr class="card-rule" />
+          <span class="eyebrow">Semester</span>
+          <!-- semesterRange lives here so updateWelcomePreview() can fill it
+               before the tracker section is revealed -->
+          <span id="semesterRange" class="welcome-semester"></span>
         </div>
-      </section>
 
-      <section id="tracker" class="tracker hidden" aria-label="Attendance tracker">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">Attendance Guard</p>
-            <h2 id="dayTitle">Today</h2>
+      </div>
+    </section>
+
+
+    <!-- ═══════════════════════════════════════════ TRACKER -->
+    <section id="tracker" class="screen tracker-screen hidden" aria-label="Attendance tracker">
+
+      <!-- ── Top navigation bar ──────────────────────────────── -->
+      <nav class="topbar">
+        <span class="wordmark">
+          <span class="prompt" aria-hidden="true">λ</span>
+          ATTENDANCE GUARD
+        </span>
+        <span id="dayTitle" class="topbar-day"></span>
+        <div class="topbar-end">
+          <span id="activeUser" class="active-user"></span>
+          <button id="logout" class="ghost-action">Log out</button>
+        </div>
+      </nav>
+
+      <!-- ── App body: sidebar + main ───────────────────────── -->
+      <div class="app-body">
+
+        <!-- Sidebar: controls only -->
+        <aside class="sidebar">
+
+          <div class="sidebar-block">
+            <p class="eyebrow">Attendance target</p>
+            <strong id="targetLabel" class="target-value">75%</strong>
+            <input
+              id="targetAttendance"
+              type="range"
+              min="75"
+              max="95"
+              value="75"
+              aria-label="Attendance target percentage"
+            />
           </div>
-          <div class="topbar-actions">
-            <span id="activeUser" class="active-user"></span>
-            <label class="target-control">
-              <span>Target</span>
-              <input id="targetAttendance" type="range" min="75" max="95" value="75" />
-              <strong id="targetLabel">75%</strong>
-            </label>
-            <button id="resetData" class="ghost-action">Reset marks</button>
-            <button id="logout" class="ghost-action">Log out</button>
+
+          <div class="sidebar-block">
+            <button id="resetData" class="ghost-action full-width">
+              Reset all marks
+            </button>
           </div>
-        </header>
 
-        <section class="summary-grid" id="summaryGrid"></section>
+        </aside>
 
-        <section class="workspace">
-          <aside class="calendar-panel">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Whole semester</p>
-                <h3>Months & dates</h3>
-              </div>
-              <span id="semesterRange"></span>
+        <!-- Main content area -->
+        <main class="main-content">
+
+          <!-- Course summary rows -->
+          <section aria-label="Course summary">
+            <div class="content-header">
+              <p class="eyebrow">Courses</p>
             </div>
-            <div id="calendar" class="calendar"></div>
-          </aside>
-
-          <section class="day-panel">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Selected day</p>
-                <h3 id="selectedDateTitle">Schedule</h3>
-              </div>
-              <button id="markDayBunk" class="ghost-action">Mandatory bunk day</button>
-            </div>
-            <div id="dayMeta" class="day-meta"></div>
-            <div id="scheduleList" class="schedule-list"></div>
+            <div id="summaryGrid" class="summary-grid"></div>
           </section>
-        </section>
-      </section>
-    </main>
+
+          <!-- Calendar + day panel side by side -->
+          <div class="workspace">
+
+            <aside class="calendar-panel" aria-label="Semester calendar">
+              <div class="panel-heading">
+                <p class="eyebrow">Semester calendar</p>
+              </div>
+              <div id="calendar" class="calendar"></div>
+            </aside>
+
+            <section class="day-panel" aria-label="Day schedule">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Selected day</p>
+                  <h3 id="selectedDateTitle" class="panel-title"></h3>
+                </div>
+                <button id="markDayBunk" class="ghost-action">
+                  Bunk day
+                </button>
+              </div>
+              <p id="dayMeta" class="day-meta"></p>
+              <div id="scheduleList" class="schedule-list"></div>
+            </section>
+
+          </div>
+        </main>
+
+      </div>
+    </section>
 
     <script src="app.js"></script>
   </body>
