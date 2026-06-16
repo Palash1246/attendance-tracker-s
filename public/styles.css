@@ -1,0 +1,1466 @@
+/* ═══════════════════════════════════════════════════════════
+   ATTENDANCE GUARD — rig.ai aesthetic
+   Flat dark surfaces · IBM Plex Mono · 1px borders · no gradients
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── FOREST THEME (default) ──────────────────────────────── */
+:root,
+body[data-theme="forest"] {
+  color-scheme: dark;
+
+  /* raw palette */
+  --dark-green:     #0A3323;
+  --moss-green:     #839958;
+  --beige:          #F7F4D5;
+  --rosy-brown:     #C97B6E;
+  --midnight-green: #0D4D5E;
+
+  /* flat surfaces — zero gradients */
+  --bg:          #0A3323;           /* page background */
+  --sidebar-bg:  #0D4D5E;           /* sidebar — clearly distinct */
+  --panel:       #0F3D2E;           /* card / panel surface */
+  --panel-2:     #0D3527;           /* slightly inset surface */
+  --topbar-bg:   #081F16;           /* nav — darkest stripe */
+
+  /* type & border */
+  --line:   #1E5A4A;                /* 1px separator */
+  --muted:  #6A9080;                /* secondary text */
+  --text:   #F7F4D5;                /* primary text */
+
+  /* semantic roles — each maps to ONE specific color, no mixing */
+  --green:  #839958;   /* attended · can-bunk · positive · accent */
+  --red:    #C97B6E;   /* missed · danger · at-risk */
+  --blue:   #7AB8C4;   /* must-attend · selected · info */
+  --yellow: #C9B87A;   /* neutral progress fill */
+  --purple: #9E7BAA;   /* planned bunk marker */
+
+  --accent:        var(--green);
+  --accent-strong: var(--sidebar-bg);
+
+  /* ── per-course left-strip colors (solid, unmixed) ── */
+  --course-AD:   #839958;   /* Architectural Design              → moss      */
+  --course-ABC:  #7AB8C4;   /* Building Construction             → teal      */
+  --course-HUM:  #C9B87A;   /* Humanities                        → sand      */
+  --course-ARD:  #9E7BAA;   /* Representation & Detailing        → mauve     */
+  --course-AT3:  #C4A05A;   /* Architectural Theory 3            → amber     */
+  --course-ABS:  #7A94B0;   /* Building Services                 → slate     */
+  --course-ALD:  #6BAA8A;   /* Landscaping & Allied Design       → sage      */
+  --course-TDS:  #7E9EBF;   /* Theory & Design of Structures     → steel     */
+  --course-CF:   #C97B6E;   /* College Projects                  → rose      */
+}
+
+/* ─── ROSE THEME ───────────────────────────────────────────── */
+body[data-theme="rose"] {
+  color-scheme: dark;
+
+  /* raw palette */
+  --amaranth:     #7A2A46;
+  --thulian-pink: #A35C78;
+  --brook-green:  #8AAF90;
+  --chalk:        #EAD9C4;
+  --pomelo-olive: #8C8260;
+
+  /* flat surfaces */
+  --bg:          #7A2A46;
+  --sidebar-bg:  #5C1F35;           /* darker wine sidebar */
+  --panel:       #6B2540;
+  --panel-2:     #5E2038;
+  --topbar-bg:   #4A1528;
+
+  /* type & border */
+  --line:   #9C4060;
+  --muted:  #B0788A;
+  --text:   #EAD9C4;
+
+  /* semantic roles */
+  --green:  #8AAF90;   /* attended · can-bunk · positive */
+  --red:    #C97B6E;   /* missed · danger */
+  --blue:   #A8C4B8;   /* must-attend · selected */
+  --yellow: #C4AA7A;   /* neutral fill */
+  --purple: #B08AAA;   /* planned bunk */
+
+  --accent:        var(--green);
+  --accent-strong: var(--sidebar-bg);
+
+  /* per-course colors */
+  --course-AD:   #8AAF90;
+  --course-ABC:  #A8C4B8;
+  --course-HUM:  #C4AA7A;
+  --course-ARD:  #B08AAA;
+  --course-AT3:  #C8AA72;   /* Architectural Theory 3 */
+  --course-ABS:  #9AAFC0;   /* Building Services */
+  --course-ALD:  #7AAF98;   /* Landscaping & Allied Design */
+  --course-TDS:  #9CB8C8;   /* Theory & Design of Structures */
+  --course-CF:   #C97B6E;
+}
+
+/* ═══════════════════════════════════════════ RESET */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ═══════════════════════════════════════════ BASE */
+html { height: 100%; }
+
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { cursor: pointer; font: inherit; }
+input  { font: inherit; }
+h1, h2, h3, h4 { line-height: 1; }
+
+/* ═══════════════════════════════════════════ TYPOGRAPHY */
+
+/* IBM Plex Mono — every data-flavoured element */
+.wordmark,
+.topbar-day,
+.active-user,
+.target-value,
+.welcome-date,
+.welcome-hint,
+.welcome-semester,
+.field-label,
+.form-message,
+.day-meta,
+.panel-title,
+.course-code,
+.card-row strong,
+.metric-box strong,
+.metric-box span,
+.metric-box small,
+.class-time,
+.class-main span,
+.status-button,
+.date-button,
+.month h4,
+.weekdays span,
+.eyebrow {
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+h1 {
+  font-size: clamp(2.8rem, 7vw, 5.4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 0.94;
+  margin-bottom: 20px;
+}
+
+/* ═══════════════════════════════════════════ UTILITY */
+.hidden { display: none !important; }
+
+/* ═══════════════════════════════════════════ BUTTONS */
+.primary-action {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: var(--accent);
+  color: var(--bg);                 /* dark text on colored bg */
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  transition: opacity 0.15s;
+}
+.primary-action:hover { opacity: 0.82; }
+
+.ghost-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  transition: color 0.12s, border-color 0.12s;
+}
+.ghost-action:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.full-width { width: 100%; }
+
+/* ── Theme toggle ── */
+.theme-toggle:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+/* ═══════════════════════════════════════════ SCREEN SHELL */
+.screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Shared top nav (auth + welcome) ── */
+.screen-nav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 36px;
+  border-bottom: 1px solid var(--line);
+  background: var(--topbar-bg);
+}
+
+.wordmark {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  color: var(--text);
+}
+
+.prompt {
+  color: var(--green);
+  margin-right: 8px;
+}
+
+/* ═══════════════════════════════════════════ AUTH SCREEN */
+.auth-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 72px;
+  align-items: center;
+  padding: 60px 80px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.auth-copy h1 {
+  font-size: clamp(3rem, 6vw, 5rem);
+}
+
+.auth-desc {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.8;
+  max-width: 440px;
+}
+
+/* ── Auth form panel (terminal box) ── */
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.auth-panel input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.84rem;
+  transition: border-color 0.12s;
+}
+.auth-panel input:focus {
+  outline: none;
+  border-color: var(--green);
+}
+.auth-panel input::placeholder {
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.form-message {
+  min-height: 1.1em;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--red);
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ═══════════════════════════════════════════ WELCOME SCREEN */
+.welcome-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 72px;
+  align-items: center;
+  padding: 60px 80px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.welcome-desc {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.8;
+  max-width: 500px;
+  margin-bottom: 28px;
+}
+
+.welcome-card {
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel);
+}
+
+.welcome-date {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 10px 0 6px;
+  line-height: 1.4;
+}
+
+.welcome-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.card-rule {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 18px 0 14px;
+}
+
+.welcome-semester {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════ TRACKER SCREEN */
+.tracker-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ── */
+.topbar {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 24px;
+  height: 52px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--topbar-bg);          /* darkest band */
+}
+
+.topbar-day {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.topbar-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-user {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── App body: sidebar + main ── */
+.app-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+
+/* ── Sidebar — flat, dark, distinct from page bg ── */
+.sidebar {
+  position: sticky;
+  top: 52px;
+  align-self: start;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  background: var(--sidebar-bg);        /* solid — not mixed */
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-block {
+  padding: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.target-value {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+  margin: 8px 0 14px;
+  letter-spacing: -0.02em;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--green);
+  cursor: pointer;
+  display: block;
+  margin-top: 4px;
+}
+
+/* ── Main content ── */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.content-header {
+  display: flex;
+  align-items: stretch;
+  height: 44px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+/* ── Tab navigation ── */
+.view-tabs {
+  display: flex;
+  align-items: stretch;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  padding: 0 22px;
+  border: none;
+  border-right: 1px solid var(--line);
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-bottom-color 0.12s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+.tab-btn.tab-active {
+  color: var(--text);
+  border-bottom-color: var(--green);
+  background: var(--panel-2);
+}
+
+/* ═══════════════════════════════════════════ COURSE SUMMARY GRID */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Each card: flat surface + left accent strip */
+.summary-card {
+  position: relative;
+  padding: 16px 18px 16px 24px;        /* extra left padding for strip */
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Left accent strip — 3px, color pulled from data-course attr */
+.summary-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+/* Per-course strip colors */
+.summary-card[data-course="AD"]::before   { background: var(--course-AD);   }
+.summary-card[data-course="ABC"]::before  { background: var(--course-ABC);  }
+.summary-card[data-course="HUM"]::before  { background: var(--course-HUM);  }
+.summary-card[data-course="ARD"]::before  { background: var(--course-ARD);  }
+.summary-card[data-course="AT3"]::before  { background: var(--course-AT3);  }
+.summary-card[data-course="ABS"]::before  { background: var(--course-ABS);  }
+.summary-card[data-course="ALD"]::before  { background: var(--course-ALD);  }
+.summary-card[data-course="TDS"]::before  { background: var(--course-TDS);  }
+.summary-card[data-course="CF"]::before   { background: var(--course-CF);   }
+
+/* Every 3rd card — no right border */
+.summary-card:nth-child(3n) { border-right: none; }
+
+.summary-card h3 {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-code {
+  font-size: 0.62rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* ── Progress bar — 2px flat track ── */
+.progress-track {
+  height: 2px;
+  background: var(--line);
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--yellow);
+  transition: width 0.3s ease;
+}
+
+.progress-fill.good   { background: var(--green); }
+.progress-fill.danger { background: var(--red);   }
+
+/* Color the fill to match the course strip */
+.summary-card[data-course="AD"]   .progress-fill { background: var(--course-AD);   }
+.summary-card[data-course="ABC"]  .progress-fill { background: var(--course-ABC);  }
+.summary-card[data-course="HUM"]  .progress-fill { background: var(--course-HUM);  }
+.summary-card[data-course="ARD"]  .progress-fill { background: var(--course-ARD);  }
+.summary-card[data-course="AT3"]  .progress-fill { background: var(--course-AT3);  }
+.summary-card[data-course="ABS"]  .progress-fill { background: var(--course-ABS);  }
+.summary-card[data-course="ALD"]  .progress-fill { background: var(--course-ALD);  }
+.summary-card[data-course="TDS"]  .progress-fill { background: var(--course-TDS);  }
+.summary-card[data-course="CF"]   .progress-fill { background: var(--course-CF);   }
+
+/* Still allow danger override to show red when below target */
+.summary-card .progress-fill.danger { background: var(--red); }
+
+/* ── Card stat rows ── */
+.card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.card-row:last-child { border-bottom: none; }
+
+.card-row strong {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+/* ── Can-bunk / must-attend metric boxes ── */
+.allowance {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 10px;
+}
+
+.metric-box {
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--panel-2);
+  text-align: center;
+}
+
+.metric-box span {
+  display: block;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+.metric-box strong {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+}
+
+.metric-box small {
+  font-size: 0.56rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.metric-box.must strong { color: var(--blue); }
+
+/* ═══════════════════════════════════════════ WORKSPACE */
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(260px, 1.15fr);
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+/* ── Calendar panel ── */
+.calendar-panel {
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 52px;
+  background: var(--panel);
+  z-index: 5;
+}
+
+.panel-heading .eyebrow { margin: 0; }
+
+.panel-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+/* ── Calendar months ── */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+  padding: 18px 18px;
+}
+
+.month h4 {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.weekdays,
+.dates {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.weekdays span {
+  font-size: 0.56rem;
+  color: var(--muted);
+  text-align: center;
+  padding-bottom: 4px;
+  letter-spacing: 0.07em;
+}
+
+.date-button {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+
+.date-button:hover {
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.date-button.selected {
+  border-color: var(--green);
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.date-button.today {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.date-button.holiday { color: var(--red); }
+
+/* dot indicators */
+.date-button.has-bunk::after,
+.date-button.has-mark::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--purple);
+}
+
+.date-button.has-mark::after { background: var(--green); }
+
+.blank-date { aspect-ratio: 1; }
+
+/* ── Day panel ── */
+.day-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.day-meta {
+  padding: 12px 20px 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.schedule-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 12px 20px 20px;
+}
+
+/* ── Class items ── */
+.class-item {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.class-item:last-child { border-bottom: none; }
+
+/* Left accent strip on class items — matches course color */
+.class-item::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 0;
+}
+
+.class-item[data-course="AD"]::before   { background: var(--course-AD);   }
+.class-item[data-course="ABC"]::before  { background: var(--course-ABC);  }
+.class-item[data-course="HUM"]::before  { background: var(--course-HUM);  }
+.class-item[data-course="ARD"]::before  { background: var(--course-ARD);  }
+.class-item[data-course="AT3"]::before  { background: var(--course-AT3);  }
+.class-item[data-course="ABS"]::before  { background: var(--course-ABS);  }
+.class-item[data-course="ALD"]::before  { background: var(--course-ALD);  }
+.class-item[data-course="TDS"]::before  { background: var(--course-TDS);  }
+.class-item[data-course="CF"]::before   { background: var(--course-CF);   }
+
+.class-time {
+  font-size: 0.67rem;
+  color: var(--muted);
+  line-height: 1.75;
+  letter-spacing: 0.03em;
+}
+
+.class-main strong {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.class-main span {
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.class-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* ── A / M / B status buttons ── */
+.status-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+
+.status-button:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.status-button.active.attended {
+  border-color: var(--green);
+  background: var(--panel-2);
+  color: var(--green);
+}
+
+.status-button.active.missed {
+  border-color: var(--red);
+  background: var(--panel-2);
+  color: var(--red);
+}
+
+.status-button.active.bunk {
+  border-color: var(--purple);
+  background: var(--panel-2);
+  color: var(--purple);
+}
+
+/* ── Empty state ── */
+.empty-state {
+  padding: 28px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 2px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════ WEEKLY SCHEDULE PANEL */
+.weekly-panel {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.week-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 24px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.week-header-row .eyebrow { margin: 0; }
+
+.week-week-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* 5-column flex row — one per weekday */
+.week-container {
+  display: flex;
+  gap: 1px;
+  background: var(--line);    /* gap color = 1px borders between cols */
+  min-width: max-content;     /* horizontal scroll on narrow viewports */
+  min-height: 300px;
+}
+
+/* Each day column */
+.week-day-col {
+  flex: 1;
+  min-width: 160px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.week-day-col:hover { background: var(--panel-2); }
+
+.week-today  { background: var(--panel); }
+.week-today:hover { background: var(--panel); }
+
+/* Day column header */
+.week-day-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  position: relative;
+}
+
+.week-day-label {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.week-today .week-day-label { color: var(--green); }
+
+.week-day-date {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+
+.week-today .week-day-date { color: var(--green); }
+
+/* Green pip for today */
+.week-today-pip {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* Holiday tag */
+.week-hol-tag {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.56rem;
+  color: var(--red);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Slot list inside each day */
+.week-slots {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+}
+
+/* Each class slot */
+.week-slot {
+  padding: 14px 16px;
+  background: var(--bg);
+  position: relative;
+  padding-left: 20px;       /* room for the left strip */
+  transition: background 0.1s;
+}
+
+.week-day-col:hover .week-slot { background: var(--panel-2); }
+
+/* Left color strip per course */
+.week-slot::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.week-slot[data-course="AD"]::before   { background: var(--course-AD);   }
+.week-slot[data-course="ABC"]::before  { background: var(--course-ABC);  }
+.week-slot[data-course="HUM"]::before  { background: var(--course-HUM);  }
+.week-slot[data-course="ARD"]::before  { background: var(--course-ARD);  }
+.week-slot[data-course="AT3"]::before  { background: var(--course-AT3);  }
+.week-slot[data-course="ABS"]::before  { background: var(--course-ABS);  }
+.week-slot[data-course="ALD"]::before  { background: var(--course-ALD);  }
+.week-slot[data-course="TDS"]::before  { background: var(--course-TDS);  }
+.week-slot[data-course="CF"]::before   { background: var(--course-CF);   }
+
+.week-slot-time {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.week-slot-name {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.week-slot-sub {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Holiday / empty variants */
+.week-slot-holiday .week-slot-name { color: var(--red); }
+.week-slot-empty   .week-slot-name { color: var(--muted); font-weight: 400; font-style: italic; }
+
+/* ═══════════════════════════════════════════ EVENTS IN DAY PANEL */
+.events-section {
+  padding: 12px 20px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+
+.events-section .eyebrow {
+  margin-bottom: 8px;
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.event-item:last-child { border-bottom: none; }
+
+.event-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yellow);
+}
+
+.event-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.event-name {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-time {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  display: block;
+  margin-top: 2px;
+}
+
+.event-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.event-delete:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+/* ═══════════════════════════════════════════ FAB */
+.fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 100;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1.6rem;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.fab:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  transform: scale(1.08);
+}
+
+.fab[hidden] { display: none !important; }
+
+/* ═══════════════════════════════════════════ EVENT MODAL */
+.event-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(440px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0;
+  /* native dialog resets */
+  box-shadow: 0 16px 60px rgba(0,0,0,0.5);
+}
+
+/* Dark overlay */
+.event-modal::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(2px);
+}
+
+.event-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 26px 26px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: -4px;
+}
+
+.modal-header .eyebrow { margin: 0; }
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.modal-close:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+/* Reuse existing .field + .field-label styles, just need the input override */
+.event-form input[type="text"],
+.event-form input[type="date"],
+.event-form input[type="time"] {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.84rem;
+  transition: border-color 0.12s;
+  /* fix browser dark-mode date picker colors */
+  color-scheme: dark;
+}
+
+.event-form input[type="text"]:focus,
+.event-form input[type="date"]:focus,
+.event-form input[type="time"]:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+.event-form input[type="text"]::placeholder { color: var(--muted); opacity: 0.6; }
+
+/* ── All-day toggle row ── */
+.all-day-row {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-input {
+  /* visually hidden, but focusable */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.toggle-input:checked + .toggle-track {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.toggle-input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(16px);
+  background: var(--bg);
+}
+
+.toggle-input:focus-visible + .toggle-track {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.toggle-text {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Modal actions row ── */
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.modal-actions .primary-action { width: 100%; justify-content: center; }
+
+/* ── Collapsible time field ── */
+#eventTimeField.hidden { display: none !important; }
+
+/* ═══════════════════════════════════════════ SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 0;
+}
+
+/* ═══════════════════════════════════════════ RESPONSIVE */
+
+/* 3-col → 2-col at 1100px */
+@media (max-width: 1100px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .summary-card:nth-child(3n) {
+    border-right: 1px solid var(--line);
+  }
+  .summary-card:nth-child(2n) {
+    border-right: none;
+  }
+}
+
+/* Stack auth/welcome columns at 900px */
+@media (max-width: 900px) {
+  .auth-body,
+  .welcome-body {
+    grid-template-columns: 1fr;
+    padding: 36px 32px;
+    gap: 36px;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .calendar-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+/* Collapse sidebar at 720px */
+@media (max-width: 720px) {
+  .app-body {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .sidebar-block {
+    flex: 1 1 160px;
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+  .sidebar-block:last-child { border-right: none; }
+  .summary-grid { grid-template-columns: 1fr; }
+  .summary-card:nth-child(n) { border-right: none; }
+  .topbar { grid-template-columns: auto 1fr; }
+  .topbar-day { display: none; }
+  .class-item {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .class-item::before { display: none; }
+  .class-actions { justify-content: flex-start; }
+  .status-button { flex: 1; max-width: 56px; }
+  .auth-actions { grid-template-columns: 1fr; }
+  .screen-nav,
+  .topbar { padding: 0 18px; }
+  .auth-body,
+  .welcome-body { padding: 24px 20px; }
+}

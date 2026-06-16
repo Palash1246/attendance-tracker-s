@@ -3,10 +3,11 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-const root = __dirname;
-const dataFile = process.env.DATA_FILE || path.join(root, "data.json");
-const port = Number(process.env.PORT || 3000);
-const sessions = new Map();
+const root      = __dirname;
+const publicDir = path.join(root, "public");   // static assets live here
+const dataFile  = process.env.DATA_FILE || path.join(root, "data.json");
+const port      = Number(process.env.PORT || 3000);
+const sessions  = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -122,15 +123,17 @@ async function handleApi(req, res, url) {
 
 function serveStatic(res, requestPath) {
   const fileName = requestPath === "/" ? "index.html" : requestPath.slice(1);
-  const blockedFiles = new Set(["data.json", "server.js", "package.json"]);
-  if (blockedFiles.has(fileName) || fileName.startsWith(".")) {
+
+  // Reject hidden files and path traversal attempts
+  if (fileName.startsWith(".") || fileName.includes("..")) {
     res.writeHead(404);
     res.end("Not found");
     return;
   }
 
-  const resolved = path.resolve(root, fileName);
-  if (!resolved.startsWith(root)) {
+  // All static files live in public/ — server.js / data.json are never reachable
+  const resolved = path.resolve(publicDir, fileName);
+  if (!resolved.startsWith(publicDir)) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
