@@ -42,6 +42,9 @@ body[data-theme="forest"] {
   --course-ABC:  #7AB8C4;   /* Building Construction             → teal      */
   --course-HUM:  #C9B87A;   /* Humanities                        → sand      */
   --course-ARD:  #9E7BAA;   /* Representation & Detailing        → mauve     */
+  --course-AT3:  #C4A05A;   /* Architectural Theory 3            → amber     */
+  --course-ABS:  #7A94B0;   /* Building Services                 → slate     */
+  --course-ALD:  #6BAA8A;   /* Landscaping & Allied Design       → sage      */
   --course-TDS:  #7E9EBF;   /* Theory & Design of Structures     → steel     */
   --course-CF:   #C97B6E;   /* College Projects                  → rose      */
 }
@@ -84,6 +87,9 @@ body[data-theme="rose"] {
   --course-ABC:  #A8C4B8;
   --course-HUM:  #C4AA7A;
   --course-ARD:  #B08AAA;
+  --course-AT3:  #C8AA72;   /* Architectural Theory 3 */
+  --course-ABS:  #9AAFC0;   /* Building Services */
+  --course-ALD:  #7AAF98;   /* Landscaping & Allied Design */
   --course-TDS:  #9CB8C8;   /* Theory & Design of Structures */
   --course-CF:   #C97B6E;
 }
@@ -557,6 +563,9 @@ input[type="range"] {
 .summary-card[data-course="ABC"]::before  { background: var(--course-ABC);  }
 .summary-card[data-course="HUM"]::before  { background: var(--course-HUM);  }
 .summary-card[data-course="ARD"]::before  { background: var(--course-ARD);  }
+.summary-card[data-course="AT3"]::before  { background: var(--course-AT3);  }
+.summary-card[data-course="ABS"]::before  { background: var(--course-ABS);  }
+.summary-card[data-course="ALD"]::before  { background: var(--course-ALD);  }
 .summary-card[data-course="TDS"]::before  { background: var(--course-TDS);  }
 .summary-card[data-course="CF"]::before   { background: var(--course-CF);   }
 
@@ -605,6 +614,9 @@ input[type="range"] {
 .summary-card[data-course="ABC"]  .progress-fill { background: var(--course-ABC);  }
 .summary-card[data-course="HUM"]  .progress-fill { background: var(--course-HUM);  }
 .summary-card[data-course="ARD"]  .progress-fill { background: var(--course-ARD);  }
+.summary-card[data-course="AT3"]  .progress-fill { background: var(--course-AT3);  }
+.summary-card[data-course="ABS"]  .progress-fill { background: var(--course-ABS);  }
+.summary-card[data-course="ALD"]  .progress-fill { background: var(--course-ALD);  }
 .summary-card[data-course="TDS"]  .progress-fill { background: var(--course-TDS);  }
 .summary-card[data-course="CF"]   .progress-fill { background: var(--course-CF);   }
 
@@ -840,6 +852,9 @@ input[type="range"] {
 .class-item[data-course="ABC"]::before  { background: var(--course-ABC);  }
 .class-item[data-course="HUM"]::before  { background: var(--course-HUM);  }
 .class-item[data-course="ARD"]::before  { background: var(--course-ARD);  }
+.class-item[data-course="AT3"]::before  { background: var(--course-AT3);  }
+.class-item[data-course="ABS"]::before  { background: var(--course-ABS);  }
+.class-item[data-course="ALD"]::before  { background: var(--course-ALD);  }
 .class-item[data-course="TDS"]::before  { background: var(--course-TDS);  }
 .class-item[data-course="CF"]::before   { background: var(--course-CF);   }
 
@@ -1062,6 +1077,9 @@ input[type="range"] {
 .week-slot[data-course="ABC"]::before  { background: var(--course-ABC);  }
 .week-slot[data-course="HUM"]::before  { background: var(--course-HUM);  }
 .week-slot[data-course="ARD"]::before  { background: var(--course-ARD);  }
+.week-slot[data-course="AT3"]::before  { background: var(--course-AT3);  }
+.week-slot[data-course="ABS"]::before  { background: var(--course-ABS);  }
+.week-slot[data-course="ALD"]::before  { background: var(--course-ALD);  }
 .week-slot[data-course="TDS"]::before  { background: var(--course-TDS);  }
 .week-slot[data-course="CF"]::before   { background: var(--course-CF);   }
 
