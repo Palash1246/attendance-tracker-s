@@ -204,6 +204,76 @@
       </div>
     </section>
 
+
+    <!-- ═══════════════════════════════════════════ FAB -->
+    <button id="fabAddEvent" class="fab" title="Add event or task" aria-label="Add event or task" hidden>
+      <span aria-hidden="true">+</span>
+    </button>
+
+
+    <!-- ═══════════════════════════════════════════ ADD-EVENT MODAL -->
+    <dialog id="eventModal" class="event-modal" aria-label="Add event">
+
+      <form id="eventForm" class="event-form" method="dialog" novalidate>
+
+        <header class="modal-header">
+          <p class="eyebrow">New event</p>
+          <button type="button" id="closeModal" class="modal-close" aria-label="Close">&times;</button>
+        </header>
+
+        <label class="field">
+          <span class="field-label">Event name</span>
+          <input
+            id="eventName"
+            name="eventName"
+            required
+            minlength="1"
+            maxlength="80"
+            placeholder="e.g. Jury submission"
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Date</span>
+          <input
+            id="eventDate"
+            name="eventDate"
+            type="date"
+            required
+          />
+        </label>
+
+        <div class="all-day-row">
+          <label class="toggle-label" for="eventAllDay">
+            <input id="eventAllDay" name="eventAllDay" type="checkbox" class="toggle-input" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">All day</span>
+          </label>
+        </div>
+
+        <label class="field" id="eventTimeField">
+          <span class="field-label">Time</span>
+          <input
+            id="eventTime"
+            name="eventTime"
+            type="time"
+            required
+          />
+        </label>
+
+        <p id="eventFormMessage" class="form-message"></p>
+
+        <div class="modal-actions">
+          <button type="submit" class="primary-action">Save event</button>
+          <button type="button" id="cancelModal" class="ghost-action">Cancel</button>
+        </div>
+
+      </form>
+    </dialog>
+
+
     <script src="app.js"></script>
   </body>
 </html>

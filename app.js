@@ -104,6 +104,18 @@ const els = {
   resetData: document.querySelector("#resetData"),
   activeUser: document.querySelector("#activeUser"),
   logout: document.querySelector("#logout"),
+  // event modal
+  fabAddEvent:      document.querySelector("#fabAddEvent"),
+  eventModal:       document.querySelector("#eventModal"),
+  eventForm:        document.querySelector("#eventForm"),
+  eventName:        document.querySelector("#eventName"),
+  eventDate:        document.querySelector("#eventDate"),
+  eventAllDay:      document.querySelector("#eventAllDay"),
+  eventTimeField:   document.querySelector("#eventTimeField"),
+  eventTime:        document.querySelector("#eventTime"),
+  eventFormMessage: document.querySelector("#eventFormMessage"),
+  closeModal:       document.querySelector("#closeModal"),
+  cancelModal:      document.querySelector("#cancelModal"),
 };
 
 init();
@@ -148,6 +160,7 @@ function bindGlobalEvents() {
   els.enterApp.addEventListener("click", () => {
     els.welcome.classList.add("hidden");
     els.tracker.classList.remove("hidden");
+    els.fabAddEvent.hidden = false;
     render();
   });
 
@@ -158,6 +171,44 @@ function bindGlobalEvents() {
     els.tracker.classList.add("hidden");
     els.welcome.classList.add("hidden");
     els.login.classList.remove("hidden");
+    els.fabAddEvent.hidden = true;
+  });
+
+  // ── FAB + modal ──
+  els.fabAddEvent.addEventListener("click", openEventModal);
+  els.closeModal.addEventListener("click", closeEventModal);
+  els.cancelModal.addEventListener("click", closeEventModal);
+
+  // Close on backdrop click
+  els.eventModal.addEventListener("click", (e) => {
+    if (e.target === els.eventModal) closeEventModal();
+  });
+
+  // Toggle time field visibility
+  els.eventAllDay.addEventListener("change", () => {
+    const allDay = els.eventAllDay.checked;
+    els.eventTimeField.classList.toggle("hidden", allDay);
+    els.eventTime.required = !allDay;
+  });
+
+  // Save event
+  els.eventForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = els.eventName.value.trim();
+    const date = els.eventDate.value;
+    const allDay = els.eventAllDay.checked;
+    const time = allDay ? null : els.eventTime.value;
+
+    if (!name) { els.eventFormMessage.textContent = "Enter a name."; return; }
+    if (!date) { els.eventFormMessage.textContent = "Pick a date."; return; }
+    if (!allDay && !time) { els.eventFormMessage.textContent = "Enter a time or check all day."; return; }
+
+    const event = { id: Date.now().toString(36), name, date, allDay, time: time || null };
+    state.events = state.events || [];
+    state.events.push(event);
+    await saveState();
+    closeEventModal();
+    render();
   });
 
   els.targetAttendance.addEventListener("input", async () => {
@@ -254,13 +305,13 @@ function renderSummary() {
     const progressClass = percent < state.target ? "danger" : percent >= state.target + 10 ? "good" : "";
 
     return `
-      <article class="summary-card">
+      <article class="summary-card" data-course="${courseId}">
         <h3>${course.name}</h3>
         <span class="course-code">${course.code}</span>
         <div class="progress-track">
           <div class="progress-fill ${progressClass}" style="width:${Math.min(percent, 100)}%"></div>
         </div>
-        <div class="card-row"><span>Current</span><strong>${stats.attended}/${stats.total} - ${stats.total ? percent : 0}%</strong></div>
+        <div class="card-row"><span>Current</span><strong>${stats.attended}/${stats.total} · ${stats.total ? percent : 0}%</strong></div>
         <div class="allowance">
           <div class="metric-box"><span>Can bunk</span><strong>${Math.max(0, stats.canBunk)}</strong><small>classes</small></div>
           <div class="metric-box must"><span>Must attend</span><strong>${Math.max(0, stats.mustAttend)}</strong><small>classes</small></div>
@@ -342,43 +393,75 @@ function renderDay() {
 
   if (!classes.length) {
     els.scheduleList.innerHTML = `<div class="empty-state">No regular classes for this day.</div>`;
-    return;
+  } else {
+    els.scheduleList.innerHTML = classes
+      .map((item) => {
+        const id = classId(item);
+        const actual = getStatus(selectedDate, item, "actual");
+        const planned = getStatus(selectedDate, item, "planned");
+        const course = courses[item.course];
+        return `
+          <article class="class-item" data-course="${item.course}">
+            <div class="class-time">${item.start}<br />${item.end}</div>
+            <div class="class-main">
+              <strong>${course.name}</strong>
+              <span>${item.type}</span>
+            </div>
+            <div class="class-actions" data-date="${key}" data-id="${id}">
+              <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
+              <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
+              <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk">B</button>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+
+    els.scheduleList.querySelectorAll(".status-button").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const parent = button.closest(".class-actions");
+        const date = parseDate(parent.dataset.date);
+        const item = classes.find((entry) => classId(entry) === parent.dataset.id);
+        const current = getStatus(date, item, button.dataset.field);
+        setStatus(date, item, button.dataset.field, current === button.dataset.value ? null : button.dataset.value);
+        await saveState();
+        render();
+      });
+    });
   }
 
-  els.scheduleList.innerHTML = classes
-    .map((item) => {
-      const id = classId(item);
-      const actual = getStatus(selectedDate, item, "actual");
-      const planned = getStatus(selectedDate, item, "planned");
-      const course = courses[item.course];
-      return `
-        <article class="class-item">
-          <div class="class-time">${item.start}<br />${item.end}</div>
-          <div class="class-main">
-            <strong>${course.name}</strong>
-            <span>${item.type}</span>
-          </div>
-          <div class="class-actions" data-date="${key}" data-id="${id}">
-            <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
-            <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
-            <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk">B</button>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+  // ── Events for this date ──
+  const dayEvents = (state.events || []).filter((ev) => ev.date === key);
 
-  els.scheduleList.querySelectorAll(".status-button").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const parent = button.closest(".class-actions");
-      const date = parseDate(parent.dataset.date);
-      const item = classes.find((entry) => classId(entry) === parent.dataset.id);
-      const current = getStatus(date, item, button.dataset.field);
-      setStatus(date, item, button.dataset.field, current === button.dataset.value ? null : button.dataset.value);
-      await saveState();
-      render();
+  // Remove any previous events section
+  const existing = els.scheduleList.parentElement.querySelector(".events-section");
+  if (existing) existing.remove();
+
+  if (dayEvents.length) {
+    const section = document.createElement("div");
+    section.className = "events-section";
+    section.innerHTML = `
+      <p class="eyebrow">Events &amp; tasks</p>
+      ${dayEvents.map((ev) => `
+        <div class="event-item">
+          <span class="event-dot"></span>
+          <div class="event-body">
+            <span class="event-name">${ev.name}</span>
+            <span class="event-time">${ev.allDay ? "All day" : ev.time}</span>
+          </div>
+          <button class="event-delete" data-event-id="${ev.id}" title="Delete event">&times;</button>
+        </div>
+      `).join("")}
+    `;
+    section.querySelectorAll(".event-delete").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        deleteEvent(btn.dataset.eventId);
+        await saveState();
+        render();
+      });
     });
-  });
+    els.scheduleList.parentElement.appendChild(section);
+  }
 }
 
 function calculateCourse(courseId, target) {
@@ -478,11 +561,16 @@ function loadLocalState(username) {
 }
 
 function blankState() {
-  return { target: 75, records: {} };
+  return { target: 75, records: {}, events: [] };
 }
 
 function normalizeState(value) {
-  return { ...blankState(), ...(value || {}), records: value?.records || {} };
+  return {
+    ...blankState(),
+    ...(value || {}),
+    records: value?.records || {},
+    events: Array.isArray(value?.events) ? value.events : [],
+  };
 }
 
 function setAuthMessage(message) {
@@ -494,6 +582,29 @@ function applyTheme(theme) {
   localStorage.setItem(themeKey, theme);
   els.themeToggle.textContent = theme === "forest" ? "Rose" : "Forest";
   els.themeToggle.title = theme === "forest" ? "Switch to rose theme" : "Switch to forest theme";
+}
+
+function openEventModal() {
+  // Pre-fill date to currently selected calendar day
+  els.eventDate.value = toKey(selectedDate);
+  // Reset rest of the form
+  els.eventName.value = "";
+  els.eventAllDay.checked = false;
+  els.eventTime.value = "";
+  els.eventTimeField.classList.remove("hidden");
+  els.eventTime.required = true;
+  els.eventFormMessage.textContent = "";
+  els.eventModal.showModal();
+  els.eventName.focus();
+}
+
+function closeEventModal() {
+  els.eventModal.close();
+  els.eventFormMessage.textContent = "";
+}
+
+function deleteEvent(id) {
+  state.events = (state.events || []).filter((ev) => ev.id !== id);
 }
 
 function getClassesForDate(date) {
