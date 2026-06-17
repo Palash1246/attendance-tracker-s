@@ -89,7 +89,7 @@ async function kvSet(key, value) {
 }
 
 // ── JWT (HMAC-SHA256, no library needed) ──────────────────────────────
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_for_development_123";
 const TOKEN_TTL  = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function b64(s) { return Buffer.from(s).toString("base64url"); }
