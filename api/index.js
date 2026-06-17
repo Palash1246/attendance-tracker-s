@@ -198,6 +198,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     // Log the full error so it appears in Vercel function logs
     console.error("[api/index]", err.message);
-    return send(res, 500, { error: "Server error.", detail: err.message });
+    return send(res, 500, { error: `Server error: ${err.message}` });
   }
 };
