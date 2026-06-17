@@ -32,25 +32,25 @@ const courses = {
 
 const weeklySchedule = {
   1: [ // Monday
-    { course: "ARD", start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
+    { course: "ARD", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
     { course: "ARD", start: "11:00 AM", end: "12:30 PM", type: "Studio" },
     { course: "AT3", start: "12:30 PM", end: "2:00 PM",  type: "Lecture" },
   ],
   2: [ // Tuesday
-    { course: "AD",  start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
+    { course: "AD",  start: "7:30 AM", end: "10:30 AM", type: "Studio" },
     { course: "HUM", start: "11:00 AM", end: "2:00 PM",  type: "Lecture" },
   ],
   3: [ // Wednesday
-    { course: "ABS", start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
+    { course: "ABS", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
     { course: "ALD", start: "11:00 AM", end: "2:00 PM",  type: "Studio" },
   ],
   4: [ // Thursday
-    { course: "ABC", start: "7:50 AM",  end: "10:20 AM", type: "Lecture / studio" },
+    { course: "ABC", start: "7:30 AM", end: "10:30 AM", type: "Lecture / studio" },
     { course: "TDS", start: "11:00 AM", end: "2:00 PM",  type: "Lecture" },
   ],
   5: [ // Friday
-    { course: "AD",  start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
-    { course: "CF",  start: "11:00 AM", end: "2:00 PM",  type: "Lecture block" },
+    { course: "AD",  start: "7:30 AM", end: "10:30 AM", type: "Studio" },
+    { course: "CF",  start: "11:00 AM", end: "2:00 PM", type: "Lecture block" },
   ],
 };
 
