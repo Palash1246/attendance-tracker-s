@@ -15,9 +15,9 @@
 const crypto = require("crypto");
 
 // ── Upstash Redis REST helpers ────────────────────────────────────────
-const KV_URL   = process.env.UPSTASH_REDIS_REST_URL;
-const KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-
+// Change these two lines
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const fs = require("fs");
 const path = require("path");
 const dataFile = path.join(process.cwd(), "data.json");
@@ -75,12 +75,12 @@ async function kvSet(key, value) {
   }
 
   const r = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
-    method:  "POST",
+    method: "POST",
     headers: {
-      Authorization:  `Bearer ${KV_TOKEN}`,
+      Authorization: `Bearer ${KV_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify([JSON.stringify(value)]),
+    body: JSON.stringify(value),
   });
   if (!r.ok) {
     const text = await r.text().catch(() => "(no body)");
@@ -90,14 +90,14 @@ async function kvSet(key, value) {
 
 // ── JWT (HMAC-SHA256, no library needed) ──────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_for_development_123";
-const TOKEN_TTL  = 30 * 24 * 60 * 60 * 1000; // 30 days
+const TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function b64(s) { return Buffer.from(s).toString("base64url"); }
 
 function signToken(username) {
   if (!JWT_SECRET) throw new Error("JWT_SECRET env var is not set.");
-  const h   = b64(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const p   = b64(JSON.stringify({ sub: username, exp: Date.now() + TOKEN_TTL }));
+  const h = b64(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const p = b64(JSON.stringify({ sub: username, exp: Date.now() + TOKEN_TTL }));
   const sig = crypto.createHmac("sha256", JWT_SECRET).update(`${h}.${p}`).digest("base64url");
   return `${h}.${p}.${sig}`;
 }
@@ -130,7 +130,7 @@ function createPasswordRecord(password) {
 
 function verifyPassword(user, password) {
   if (user.passwordHash && user.passwordSalt) {
-    const stored    = Buffer.from(user.passwordHash, "hex");
+    const stored = Buffer.from(user.passwordHash, "hex");
     const candidate = crypto.scryptSync(password, user.passwordSalt, stored.length);
     return stored.length === candidate.length && crypto.timingSafeEqual(stored, candidate);
   }
@@ -143,9 +143,9 @@ function blankState() { return { target: 75, records: {}, events: [] }; }
 function normalizeState(v) {
   return {
     ...blankState(), ...(v || {}),
-    target:  Number(v?.target || 75),
+    target: Number(v?.target || 75),
     records: v?.records && typeof v.records === "object" ? v.records : {},
-    events:  Array.isArray(v?.events) ? v.events : [],
+    events: Array.isArray(v?.events) ? v.events : [],
   };
 }
 
@@ -158,7 +158,7 @@ function send(res, status, body) { res.status(status).json(body); }
 
 // ── Main handler ──────────────────────────────────────────────────────
 module.exports = async (req, res) => {
-  const body     = req.body || {};
+  const body = req.body || {};
   const pathname = new URL(req.url, "http://x").pathname;
 
   try {
@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
     // ── POST /api/login ─────────────────────────────────────────────
     if (req.method === "POST" && pathname === "/api/login") {
       const username = cleanUsername(body.username);
-      const user     = await kvGet(`user:${username}`);
+      const user = await kvGet(`user:${username}`);
 
       if (!user || !verifyPassword(user, String(body.password || "")))
         return send(res, 401, { error: "Incorrect username or password." });
@@ -191,9 +191,9 @@ module.exports = async (req, res) => {
 
     // ── GET /api/state ──────────────────────────────────────────────
     if (req.method === "GET" && pathname === "/api/state") {
-      const qs       = new URL(req.url, "http://x").searchParams;
+      const qs = new URL(req.url, "http://x").searchParams;
       const username = cleanUsername(qs.get("username"));
-      const payload  = verifyToken(qs.get("token"));
+      const payload = verifyToken(qs.get("token"));
 
       if (!payload || payload.sub !== username)
         return send(res, 401, { error: "Please log in again." });
@@ -206,7 +206,7 @@ module.exports = async (req, res) => {
     // ── POST /api/state ─────────────────────────────────────────────
     if (req.method === "POST" && pathname === "/api/state") {
       const username = cleanUsername(body.username);
-      const payload  = verifyToken(body.token);
+      const payload = verifyToken(body.token);
 
       if (!payload || payload.sub !== username)
         return send(res, 401, { error: "Please log in again." });
@@ -214,7 +214,7 @@ module.exports = async (req, res) => {
       const user = await kvGet(`user:${username}`);
       if (!user) return send(res, 404, { error: "User not found." });
 
-      user.state     = normalizeState(body.state);
+      user.state = normalizeState(body.state);
       user.updatedAt = new Date().toISOString();
       await kvSet(`user:${username}`, user);
       return send(res, 200, { username, state: user.state });
