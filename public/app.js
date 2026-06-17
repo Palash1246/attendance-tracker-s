@@ -19,38 +19,38 @@ const holidays = [
 ];
 
 const courses = {
-  AD:  { name: "Architectural Design",                    code: "Studio" },
+  AD: { name: "Architectural Design", code: "Studio" },
   ABC: { name: "Architectural Building Construction III", code: "Studio + lecture" },
-  HUM: { name: "Humanities",                              code: "Lecture" },
+  HUM: { name: "Humanities", code: "Lecture" },
   ARD: { name: "Architectural Representation & Detailing", code: "Studio" },
-  AT3: { name: "Architectural Theory 3",                  code: "Lecture" },
-  ABS: { name: "Architectural Building Services",         code: "Studio" },
-  ALD: { name: "Landscaping & Allied Design",             code: "Studio" },
-  TDS: { name: "Theory & Design of Structures",           code: "Lecture" },
-  CF:  { name: "College Projects",                        code: "Sem V" },
+  AT3: { name: "Architectural Theory 3", code: "Lecture" },
+  ABS: { name: "Architectural Building Services", code: "Studio" },
+  ALD: { name: "Landscaping & Allied Design", code: "Studio" },
+  TDS: { name: "Theory & Design of Structures", code: "Lecture" },
+  CF: { name: "College Projects", code: "Sem V" },
 };
 
 const weeklySchedule = {
   1: [ // Monday
-    { course: "ARD", start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
+    { course: "ARD", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
     { course: "ARD", start: "11:00 AM", end: "12:30 PM", type: "Studio" },
-    { course: "AT3", start: "12:30 PM", end: "2:00 PM",  type: "Lecture" },
+    { course: "AT3", start: "12:30 PM", end: "2:00 PM", type: "Lecture" },
   ],
   2: [ // Tuesday
-    { course: "AD",  start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
-    { course: "HUM", start: "11:00 AM", end: "2:00 PM",  type: "Lecture" },
+    { course: "AD", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
+    { course: "HUM", start: "11:00 AM", end: "2:00 PM", type: "Lecture" },
   ],
   3: [ // Wednesday
-    { course: "ABS", start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
-    { course: "ALD", start: "11:00 AM", end: "2:00 PM",  type: "Studio" },
+    { course: "ABS", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
+    { course: "ALD", start: "11:00 AM", end: "2:00 PM", type: "Studio" },
   ],
   4: [ // Thursday
-    { course: "ABC", start: "7:50 AM",  end: "10:20 AM", type: "Lecture / studio" },
-    { course: "TDS", start: "11:00 AM", end: "2:00 PM",  type: "Lecture" },
+    { course: "ABC", start: "7:30 AM", end: "10:30 AM", type: "Lecture / studio" },
+    { course: "TDS", start: "11:00 AM", end: "2:00 PM", type: "Lecture" },
   ],
   5: [ // Friday
-    { course: "AD",  start: "7:50 AM",  end: "10:20 AM", type: "Studio" },
-    { course: "CF",  start: "11:00 AM", end: "2:00 PM",  type: "Lecture block" },
+    { course: "AD", start: "7:30 AM", end: "10:30 AM", type: "Studio" },
+    { course: "CF", start: "11:00 AM", end: "2:00 PM", type: "Lecture block" },
   ],
 };
 
@@ -111,17 +111,17 @@ const els = {
   trackerView: document.querySelector("#trackerView"),
   weeklyPanel: document.querySelector("#weeklyPanel"),
   // event modal
-  fabAddEvent:      document.querySelector("#fabAddEvent"),
-  eventModal:       document.querySelector("#eventModal"),
-  eventForm:        document.querySelector("#eventForm"),
-  eventName:        document.querySelector("#eventName"),
-  eventDate:        document.querySelector("#eventDate"),
-  eventAllDay:      document.querySelector("#eventAllDay"),
-  eventTimeField:   document.querySelector("#eventTimeField"),
-  eventTime:        document.querySelector("#eventTime"),
+  fabAddEvent: document.querySelector("#fabAddEvent"),
+  eventModal: document.querySelector("#eventModal"),
+  eventForm: document.querySelector("#eventForm"),
+  eventName: document.querySelector("#eventName"),
+  eventDate: document.querySelector("#eventDate"),
+  eventAllDay: document.querySelector("#eventAllDay"),
+  eventTimeField: document.querySelector("#eventTimeField"),
+  eventTime: document.querySelector("#eventTime"),
   eventFormMessage: document.querySelector("#eventFormMessage"),
-  closeModal:       document.querySelector("#closeModal"),
-  cancelModal:      document.querySelector("#cancelModal"),
+  closeModal: document.querySelector("#closeModal"),
+  cancelModal: document.querySelector("#cancelModal"),
 };
 
 init();
@@ -535,10 +535,10 @@ async function saveState() {
 async function api(path, body) {
   const options = body
     ? {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
     : undefined;
   const response = await fetch(`/api${path}`, options);
   let payload = {};
@@ -626,7 +626,7 @@ function switchTab(panelId) {
     btn.setAttribute("aria-selected", active);
   });
   els.trackerView.classList.toggle("hidden", panelId !== "trackerView");
-  els.weeklyPanel.classList.toggle("hidden",  panelId !== "weeklyPanel");
+  els.weeklyPanel.classList.toggle("hidden", panelId !== "weeklyPanel");
   if (panelId === "weeklyPanel") renderWeekly();
 }
 
@@ -639,11 +639,11 @@ function renderWeekly() {
   const weekStart = addDays(today, mondayOffset);
 
   const DAY_META = [
-    { index: 1, label: "MON", full: "Monday"    },
-    { index: 2, label: "TUE", full: "Tuesday"   },
+    { index: 1, label: "MON", full: "Monday" },
+    { index: 2, label: "TUE", full: "Tuesday" },
     { index: 3, label: "WED", full: "Wednesday" },
-    { index: 4, label: "THU", full: "Thursday"  },
-    { index: 5, label: "FRI", full: "Friday"    },
+    { index: 4, label: "THU", full: "Thursday" },
+    { index: 5, label: "FRI", full: "Friday" },
   ];
 
   els.weeklyPanel.innerHTML = `
@@ -655,13 +655,13 @@ function renderWeekly() {
     </div>
     <div class="week-container">
       ${DAY_META.map(({ index, label, full }) => {
-        const date    = addDays(weekStart, index - 1);
-        const dateKey = toKey(date);
-        const isToday = dateKey === toKey(today);
-        const isHol   = holidayMap.has(dateKey);
-        const slots   = weeklySchedule[index] || [];
+    const date = addDays(weekStart, index - 1);
+    const dateKey = toKey(date);
+    const isToday = dateKey === toKey(today);
+    const isHol = holidayMap.has(dateKey);
+    const slots = weeklySchedule[index] || [];
 
-        return `
+    return `
           <div class="week-day-col${isToday ? " week-today" : ""}${isHol ? " week-holiday" : ""}"
                data-date="${dateKey}"
                title="Go to ${full}">
@@ -669,29 +669,29 @@ function renderWeekly() {
               <span class="week-day-label">${label}</span>
               <span class="week-day-date">${date.getDate()} ${monthNames[date.getMonth()].slice(0, 3)}</span>
               ${isToday ? "<span class=\"week-today-pip\"></span>" : ""}
-              ${isHol   ? `<span class="week-hol-tag">${holidayMap.get(dateKey)}</span>` : ""}
+              ${isHol ? `<span class="week-hol-tag">${holidayMap.get(dateKey)}</span>` : ""}
             </div>
             <div class="week-slots">
               ${isHol
-                ? `<div class="week-slot week-slot-holiday">
+        ? `<div class="week-slot week-slot-holiday">
                      <span class="week-slot-name">Holiday</span>
                      <span class="week-slot-sub">${holidayMap.get(dateKey)}</span>
                    </div>`
-                : slots.length
-                  ? slots.map(cls => `
+        : slots.length
+          ? slots.map(cls => `
                       <div class="week-slot" data-course="${cls.course}">
                         <span class="week-slot-time">${cls.start} – ${cls.end}</span>
                         <strong class="week-slot-name">${courses[cls.course].name}</strong>
                         <span class="week-slot-sub">${cls.type}</span>
                       </div>`).join("")
-                  : `<div class="week-slot week-slot-empty">
+          : `<div class="week-slot week-slot-empty">
                        <span class="week-slot-name">No classes</span>
                      </div>`
-              }
+      }
             </div>
           </div>
         `;
-      }).join("")}
+  }).join("")}
     </div>
   `;
 
@@ -700,7 +700,7 @@ function renderWeekly() {
     col.addEventListener("click", () => {
       const date = parseDate(col.dataset.date);
       const start = parseDate(semester.start);
-      const end   = parseDate(semester.end);
+      const end = parseDate(semester.end);
       if (date >= start && date <= end) selectedDate = date;
       switchTab("trackerView");
       render();
