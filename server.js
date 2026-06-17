@@ -25,6 +25,7 @@ const server = http.createServer(async (req, res) => {
     }
     serveStatic(res, url.pathname);
   } catch (error) {
+    console.error(error);
     sendJson(res, 500, { error: "Server error." });
   }
 });

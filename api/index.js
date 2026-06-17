@@ -18,41 +18,68 @@ const crypto = require("crypto");
 const KV_URL   = process.env.UPSTASH_REDIS_REST_URL;
 const KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-function assertKvConfigured() {
-  if (!KV_URL || !KV_TOKEN) {
-    throw new Error(
-      "Redis not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in Vercel environment variables."
-    );
+const fs = require("fs");
+const path = require("path");
+const dataFile = path.join(process.cwd(), "data.json");
+
+function getLocalDb() {
+  try {
+    return JSON.parse(fs.readFileSync(dataFile, "utf8"));
+  } catch {
+    return { users: {} };
+  }
+}
+
+function saveLocalDb(db) {
+  try {
+    fs.writeFileSync(dataFile, JSON.stringify(db, null, 2));
+  } catch (err) {
+    console.error("Failed to write to data.json:", err);
   }
 }
 
 async function kvGet(key) {
-  assertKvConfigured();
+  if (!KV_URL || !KV_TOKEN) {
+    // Fallback to local data.json
+    const db = getLocalDb();
+    if (key.startsWith("user:")) {
+      return db.users[key.slice(5)] || null;
+    }
+    return db[key] || null;
+  }
+
   const r = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
     headers: { Authorization: `Bearer ${KV_TOKEN}` },
   });
   if (!r.ok) {
-    // Surface the actual Upstash error instead of silently returning null.
-    // A missing key returns 200 + {"result":null}, not a non-2xx status.
     const text = await r.text().catch(() => "(no body)");
     throw new Error(`KV read failed (${r.status}): ${text}`);
   }
   const { result } = await r.json();
-  if (result == null) return null;          // key does not exist in Redis
+  if (result == null) return null;
   try { return typeof result === "string" ? JSON.parse(result) : result; }
   catch { return null; }
 }
 
 async function kvSet(key, value) {
-  assertKvConfigured();
+  if (!KV_URL || !KV_TOKEN) {
+    // Fallback to local data.json
+    const db = getLocalDb();
+    if (key.startsWith("user:")) {
+      db.users[key.slice(5)] = value;
+    } else {
+      db[key] = value;
+    }
+    saveLocalDb(db);
+    return;
+  }
+
   const r = await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
     method:  "POST",
     headers: {
       Authorization:  `Bearer ${KV_TOKEN}`,
       "Content-Type": "application/json",
     },
-    // Upstash REST body format: JSON array of command args after the key.
-    // We JSON.stringify the value so it's stored as a string in Redis.
     body: JSON.stringify([JSON.stringify(value)]),
   });
   if (!r.ok) {
