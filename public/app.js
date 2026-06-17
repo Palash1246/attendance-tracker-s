@@ -5,6 +5,13 @@ const semester = {
 
 const holidays = [
   ["2026-06-01", "Bakri Id / commencement day"],
+  ["2026-06-02", "Elective week"],
+  ["2026-06-03", "Elective week"],
+  ["2026-06-04", "Elective week"],
+  ["2026-06-05", "Elective week"],
+  ["2026-06-06", "Elective week"],
+  ["2026-06-07", "Elective week"],
+  ["2026-06-08", "Elective week"],
   ["2026-06-26", "Moharram"],
   ["2026-08-15", "Independence Day / Parsi New Year"],
   ["2026-08-26", "Id-e-Milad"],
