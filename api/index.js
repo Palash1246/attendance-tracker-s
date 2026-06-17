@@ -160,7 +160,8 @@ function send(res, status, body) { res.status(status).json(body); }
 // ── Main handler ──────────────────────────────────────────────────────
 module.exports = async (req, res) => {
   const body     = req.body || {};
-  const pathname = new URL(req.url, "http://x").pathname;
+  const matchedPath = req.headers["x-forwarded-uri"] || req.url;
+  const pathname = new URL(matchedPath, "http://x").pathname;
 
   try {
     // ── POST /api/register ──────────────────────────────────────────
@@ -192,7 +193,7 @@ module.exports = async (req, res) => {
 
     // ── GET /api/state ──────────────────────────────────────────────
     if (req.method === "GET" && pathname === "/api/state") {
-      const qs       = new URL(req.url, "http://x").searchParams;
+      const qs       = new URL(matchedPath, "http://x").searchParams;
       const username = cleanUsername(qs.get("username"));
       const payload  = verifyToken(qs.get("token"));
 

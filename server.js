@@ -35,91 +35,33 @@ server.listen(port, () => {
 });
 
 async function handleApi(req, res, url) {
-  if (req.method === "POST" && url.pathname === "/api/register") {
-    const body = await readJson(req);
-    const username = cleanUsername(body.username);
-    const password = String(body.password || "");
-    if (!username || password.length < 3) {
-      sendJson(res, 400, { error: "Username and password must be at least 3 characters." });
-      return;
-    }
+  // Add Vercel-like helper methods for serverless compatibility
+  res.status = (code) => {
+    res.statusCode = code;
+    return res;
+  };
+  res.json = (data) => {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.end(JSON.stringify(data));
+  };
 
-    const db = readDb();
-    if (db.users[username]) {
-      sendJson(res, 409, { error: "That username is already taken." });
-      return;
+  // Parse JSON body for POST requests
+  if (req.method === "POST") {
+    try {
+      req.body = await readJson(req);
+    } catch {
+      req.body = {};
     }
-
-    db.users[username] = {
-      ...createPasswordRecord(password),
-      state: blankState(),
-      createdAt: new Date().toISOString(),
-    };
-    writeDb(db);
-    sendJson(res, 201, { username, token: createSession(username), state: db.users[username].state });
-    return;
   }
 
-  if (req.method === "POST" && url.pathname === "/api/login") {
-    const body = await readJson(req);
-    const username = cleanUsername(body.username);
-    const password = String(body.password || "");
-    const db = readDb();
-    const user = db.users[username];
-    if (!user || !verifyPassword(user, password)) {
-      sendJson(res, 401, { error: "Incorrect username or password." });
-      return;
-    }
-
-    if (user.password) {
-      delete user.password;
-      Object.assign(user, createPasswordRecord(password));
-      user.updatedAt = new Date().toISOString();
-      writeDb(db);
-    }
-
-    sendJson(res, 200, { username, token: createSession(username), state: user.state || blankState() });
-    return;
+  // Delegate request to api/index.js handler
+  const handler = require("./api/index.js");
+  try {
+    await handler(req, res);
+  } catch (error) {
+    console.error("API handler error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
-
-  if (req.method === "GET" && url.pathname === "/api/state") {
-    const username = cleanUsername(url.searchParams.get("username"));
-    const token = String(url.searchParams.get("token") || "");
-    if (!isSessionValid(username, token)) {
-      sendJson(res, 401, { error: "Please log in again." });
-      return;
-    }
-
-    const user = readDb().users[username];
-    if (!user) {
-      sendJson(res, 404, { error: "User not found." });
-      return;
-    }
-    sendJson(res, 200, { username, state: user.state || blankState() });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/state") {
-    const body = await readJson(req);
-    const username = cleanUsername(body.username);
-    if (!isSessionValid(username, body.token)) {
-      sendJson(res, 401, { error: "Please log in again." });
-      return;
-    }
-
-    const db = readDb();
-    if (!db.users[username]) {
-      sendJson(res, 404, { error: "User not found." });
-      return;
-    }
-    db.users[username].state = normalizeState(body.state);
-    db.users[username].updatedAt = new Date().toISOString();
-    writeDb(db);
-    sendJson(res, 200, { username, state: db.users[username].state });
-    return;
-  }
-
-  sendJson(res, 404, { error: "Not found." });
 }
 
 function serveStatic(res, requestPath) {
