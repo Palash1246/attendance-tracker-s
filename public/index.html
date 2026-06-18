@@ -138,7 +138,8 @@
       </nav>
 
       <!-- ── App body: sidebar + main ───────────────────────── -->
-      <div class="app-body">
+      <!-- User App body -->
+      <div id="userAppBody" class="app-body">
 
         <!-- Sidebar: controls only -->
         <aside class="sidebar">
@@ -210,6 +211,90 @@
 
         </main>
 
+      </div>
+
+      <!-- Admin App body -->
+      <div id="adminAppBody" class="app-body hidden">
+        <aside class="sidebar admin-sidebar">
+          <div class="sidebar-block">
+            <p class="eyebrow">Admin Actions</p>
+            <button id="adminRefresh" class="ghost-action full-width">
+              Refresh Data
+            </button>
+          </div>
+        </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+
+          <!-- Tab navigation -->
+          <div class="content-header">
+            <nav class="view-tabs" role="tablist" aria-label="Admin view">
+              <button id="tabAdminUsers" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="adminUsersView">Users</button>
+              <button id="tabAdminCalendar" class="tab-btn"            role="tab" aria-selected="false" data-panel="adminCalendarView">Calendar</button>
+              <button id="tabAdminStats" class="tab-btn"            role="tab" aria-selected="false" data-panel="adminStatsView">Stats</button>
+            </nav>
+          </div>
+
+          <!-- Users view tab -->
+          <div id="adminUsersView" class="admin-view-panel">
+            <div id="adminUsersGrid" class="summary-grid admin-users-grid"></div>
+          </div>
+
+          <!-- Calendar view tab -->
+          <div id="adminCalendarView" class="admin-view-panel hidden">
+            <div class="workspace admin-workspace">
+              <aside class="calendar-panel admin-calendar-panel" aria-label="Admin semester calendar">
+                <div class="panel-heading">
+                  <p class="eyebrow">All-user calendar</p>
+                </div>
+                <div id="adminCalendar" class="calendar admin-calendar"></div>
+              </aside>
+
+              <section class="day-panel admin-day-panel" aria-label="Admin day details">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Selected day (Admin)</p>
+                    <h3 id="adminSelectedDateTitle" class="panel-title"></h3>
+                  </div>
+                </div>
+                <div id="adminDayDetails" class="schedule-list admin-day-details"></div>
+              </section>
+            </div>
+          </div>
+
+          <!-- Stats view tab -->
+          <div id="adminStatsView" class="admin-view-panel hidden">
+            <div class="admin-stats-container">
+              <table class="admin-stats-table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Last Active</th>
+                    <th>Overall %</th>
+                    <th>AD</th>
+                    <th>ABC</th>
+                    <th>HUM</th>
+                    <th>ARD</th>
+                    <th>AT3</th>
+                    <th>ABS</th>
+                    <th>ALD</th>
+                    <th>TDS</th>
+                    <th>CF</th>
+                    <th>Held</th>
+                    <th>Att.</th>
+                    <th>Miss.</th>
+                    <th>Canc.</th>
+                    <th>Bunk</th>
+                    <th>Events</th>
+                  </tr>
+                </thead>
+                <tbody id="adminStatsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </main>
       </div>
     </section>
 

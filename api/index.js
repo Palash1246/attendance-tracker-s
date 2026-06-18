@@ -95,10 +95,10 @@ const TOKEN_TTL  = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function b64(s) { return Buffer.from(s).toString("base64url"); }
 
-function signToken(username) {
+function signToken(username, role = "user") {
   if (!JWT_SECRET) throw new Error("JWT_SECRET env var is not set.");
   const h   = b64(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const p   = b64(JSON.stringify({ sub: username, exp: Date.now() + TOKEN_TTL }));
+  const p   = b64(JSON.stringify({ sub: username, role, exp: Date.now() + TOKEN_TTL }));
   const sig = crypto.createHmac("sha256", JWT_SECRET).update(`${h}.${p}`).digest("base64url");
   return `${h}.${p}.${sig}`;
 }
@@ -172,6 +172,9 @@ module.exports = async (req, res) => {
       if (!username || password.length < 3)
         return send(res, 400, { error: "Username and password must be at least 3 characters." });
 
+      if (username === "admin")
+        return send(res, 400, { error: "Username 'admin' is reserved." });
+
       if (await kvGet(`user:${username}`))
         return send(res, 409, { error: "That username is already taken." });
 
@@ -183,6 +186,14 @@ module.exports = async (req, res) => {
     // ── POST /api/login ─────────────────────────────────────────────
     if (req.method === "POST" && pathname === "/api/login") {
       const username = cleanUsername(body.username);
+      if (username === "admin") {
+        if (String(body.password || "") === "god") {
+          return send(res, 200, { username: "admin", token: signToken("admin", "admin"), state: {} });
+        } else {
+          return send(res, 401, { error: "Incorrect username or password." });
+        }
+      }
+
       const user     = await kvGet(`user:${username}`);
 
       if (!user || !verifyPassword(user, String(body.password || "")))
@@ -220,6 +231,47 @@ module.exports = async (req, res) => {
       user.updatedAt = new Date().toISOString();
       await kvSet(`user:${username}`, user);
       return send(res, 200, { username, state: user.state });
+    }
+
+    // ── GET /api/admin/users ────────────────────────────────────────
+    if (req.method === "GET" && pathname === "/api/admin/users") {
+      const qs = new URL(matchedPath, "http://x").searchParams;
+      const payload = verifyToken(qs.get("token"));
+
+      if (!payload || payload.role !== "admin")
+        return send(res, 401, { error: "Unauthorized access." });
+
+      let userKeys = [];
+      if (!KV_URL || !KV_TOKEN) {
+        const db = getLocalDb();
+        userKeys = Object.keys(db.users).map(name => `user:${name}`);
+      } else {
+        const r = await fetch(`${KV_URL}/keys/user:*`, {
+          headers: { Authorization: `Bearer ${KV_TOKEN}` },
+        });
+        if (!r.ok) {
+          const text = await r.text().catch(() => "(no body)");
+          throw new Error(`KV keys read failed (${r.status}): ${text}`);
+        }
+        const data = await r.json();
+        userKeys = Array.isArray(data.result) ? data.result : [];
+      }
+
+      const users = [];
+      for (const key of userKeys) {
+        const username = key.slice(5);
+        if (username === "admin") continue;
+        const u = await kvGet(key);
+        if (u) {
+          users.push({
+            username,
+            createdAt: u.createdAt || "2026-06-16T00:00:00.000Z",
+            updatedAt: u.updatedAt || u.createdAt || "2026-06-16T00:00:00.000Z",
+            state: normalizeState(u.state),
+          });
+        }
+      }
+      return send(res, 200, { users });
     }
 
     return send(res, 404, { error: "Not found." });

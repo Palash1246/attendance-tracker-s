@@ -1474,3 +1474,174 @@ input[type="range"] {
   .auth-body,
   .welcome-body { padding: 24px 20px; }
 }
+
+/* ═══════════════════════════════════════════ CANCELLED CLASSES */
+.class-item.cancelled,
+.week-slot.cancelled {
+  opacity: 0.6;
+}
+
+.class-item.cancelled .class-main strong,
+.week-slot.cancelled .week-slot-name {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.class-item.cancelled::before,
+.week-slot.cancelled::before {
+  background: var(--muted) !important;
+}
+
+.cancelled-badge {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: var(--line);
+  color: var(--muted);
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.status-button.cancelled-btn.active {
+  border-color: var(--muted);
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.date-button.has-cancelled::after {
+  content: "";
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+/* ═══════════════════════════════════════════ ADMIN DASHBOARD */
+.admin-date-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.admin-dots {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  width: 100%;
+  margin-top: 2px;
+  flex-wrap: wrap;
+  max-height: 12px;
+  overflow: hidden;
+}
+
+.admin-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.admin-user-card {
+  transition: transform 0.15s ease-in-out;
+}
+
+.admin-user-card:hover {
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+.admin-stats-container {
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.admin-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  text-align: left;
+}
+
+.admin-stats-table th,
+.admin-stats-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+}
+
+.admin-stats-table th {
+  background: var(--panel-2);
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+}
+
+.admin-stats-table tr:hover {
+  background: var(--panel);
+}
+
+.admin-user-day-card {
+  border-left: 3px solid var(--muted);
+  background: var(--panel);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border-radius: 2px;
+}
+
+.admin-user-class-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.72rem;
+}
+
+.admin-user-class-row:last-child {
+  border-bottom: none;
+}
+
+.admin-user-event-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.72rem;
+}
+
+.admin-class-status {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.admin-class-status.unmarked {
+  color: var(--muted);
+}
+
+.admin-class-status.attended {
+  color: var(--green);
+}
+
+.admin-class-status.missed {
+  color: var(--red);
+}
+
+.admin-class-status.cancelled {
+  color: var(--muted);
+  text-decoration: line-through;
+}

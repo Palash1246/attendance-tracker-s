@@ -139,12 +139,16 @@ async function init() {
   updateWelcomePreview();
 
   if (session?.username && session?.token) {
-    const loaded = await loadUserState(session.username);
-    if (loaded) {
+    if (session.username === "admin") {
       showWelcome();
     } else {
-      session = null;
-      localStorage.removeItem(localSessionKey);
+      const loaded = await loadUserState(session.username);
+      if (loaded) {
+        showWelcome();
+      } else {
+        session = null;
+        localStorage.removeItem(localSessionKey);
+      }
     }
   }
 }
@@ -175,22 +179,34 @@ function bindGlobalEvents() {
     await authenticate("register");
   });
 
-  els.enterApp.addEventListener("click", () => {
-    els.welcome.classList.add("hidden");
-    els.tracker.classList.remove("hidden");
-    els.fabAddEvent.hidden = false;
-    render();
-  });
+    els.enterApp.addEventListener("click", () => {
+      els.welcome.classList.add("hidden");
+      els.tracker.classList.remove("hidden");
+      if (session?.username === "admin") {
+        els.fabAddEvent.hidden = true;
+        document.querySelector("#userAppBody").classList.add("hidden");
+        document.querySelector("#adminAppBody").classList.remove("hidden");
+        switchAdminTab("adminUsersView");
+        loadAdminData();
+      } else {
+        els.fabAddEvent.hidden = false;
+        document.querySelector("#userAppBody").classList.remove("hidden");
+        document.querySelector("#adminAppBody").classList.add("hidden");
+        render();
+      }
+    });
 
-  els.logout.addEventListener("click", () => {
-    session = null;
-    localStorage.removeItem(localSessionKey);
-    state = blankState();
-    els.tracker.classList.add("hidden");
-    els.welcome.classList.add("hidden");
-    els.login.classList.remove("hidden");
-    els.fabAddEvent.hidden = true;
-  });
+    els.logout.addEventListener("click", () => {
+      session = null;
+      localStorage.removeItem(localSessionKey);
+      state = blankState();
+      els.tracker.classList.add("hidden");
+      els.welcome.classList.add("hidden");
+      els.login.classList.remove("hidden");
+      els.fabAddEvent.hidden = true;
+      document.querySelector("#userAppBody").classList.remove("hidden");
+      document.querySelector("#adminAppBody").classList.add("hidden");
+    });
 
   // ── FAB + modal ──
   els.fabAddEvent.addEventListener("click", openEventModal);
@@ -237,8 +253,10 @@ function bindGlobalEvents() {
 
   els.markDayBunk.addEventListener("click", async () => {
     const classes = getClassesForDate(selectedDate);
-    const allBunked = classes.every((item) => getStatus(selectedDate, item, "planned") === "bunk");
-    classes.forEach((item) => setStatus(selectedDate, item, "planned", allBunked ? null : "bunk"));
+    const activeClasses = classes.filter(item => getStatus(selectedDate, item, "actual") !== "cancelled");
+    if (activeClasses.length === 0) return;
+    const allBunked = activeClasses.every((item) => getStatus(selectedDate, item, "planned") === "bunk");
+    activeClasses.forEach((item) => setStatus(selectedDate, item, "planned", allBunked ? null : "bunk"));
     await saveState();
     render();
   });
@@ -248,6 +266,18 @@ function bindGlobalEvents() {
     state.records = {};
     await saveState();
     render();
+  });
+
+  // ── Admin Dashboard Events ──
+  const refreshBtn = document.querySelector("#adminRefresh");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      await loadAdminData();
+    });
+  }
+
+  document.querySelectorAll("#adminAppBody .tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchAdminTab(btn.dataset.panel));
   });
 }
 
@@ -261,13 +291,29 @@ async function authenticate(mode) {
     return;
   }
 
+  if (username === "admin") {
+    if (!hasServer) {
+      setAuthMessage("Admin dashboard requires a server connection.");
+      return;
+    }
+  }
+
   try {
     const result = await api(`/${mode}`, { username, password });
     session = { username: result.username, token: result.token };
     localStorage.setItem(localSessionKey, JSON.stringify(session));
-    state = normalizeState(result.state);
+    if (username === "admin") {
+      state = blankState();
+    } else {
+      state = normalizeState(result.state);
+    }
     showWelcome();
   } catch (error) {
+    if (username === "admin") {
+      setAuthMessage("Admin dashboard requires a server connection.");
+      return;
+    }
+
     if (hasServer) {
       setAuthMessage(error.message || "Could not sign in.");
       return;
@@ -294,6 +340,14 @@ function showWelcome() {
   els.tracker.classList.add("hidden");
   els.welcome.classList.remove("hidden");
   els.activeUser.textContent = session?.username ? `@${session.username}` : "";
+
+  if (session?.username === "admin") {
+    els.welcomeDate.textContent = longDate(selectedDate);
+    els.welcomeHint.textContent = "Admin Terminal Access.";
+    els.semesterRange.textContent = "Managing Academy of Architecture Sem V";
+    return;
+  }
+
   els.targetAttendance.value = state.target;
   updateWelcomePreview();
 }
@@ -362,8 +416,10 @@ function renderCalendar() {
         }
 
         const records = state.records[key] || {};
-        const hasBunk = Object.values(records).some((item) => item.planned === "bunk");
-        const hasMark = Object.values(records).some((item) => item.actual);
+        const activeRecords = Object.values(records).filter((item) => item.actual !== "cancelled");
+        const hasBunk = activeRecords.some((item) => item.planned === "bunk");
+        const hasMark = activeRecords.some((item) => item.actual === "attended" || item.actual === "missed");
+        const hasCancelled = Object.values(records).some((item) => item.actual === "cancelled") && !hasMark && !hasBunk;
         const classes = [
           "date-button",
           key === toKey(selectedDate) ? "selected" : "",
@@ -371,6 +427,7 @@ function renderCalendar() {
           holidayMap.has(key) ? "holiday" : "",
           hasBunk ? "has-bunk" : "",
           hasMark ? "has-mark" : "",
+          hasCancelled ? "has-cancelled" : "",
         ]
           .filter(Boolean)
           .join(" ");
@@ -405,9 +462,10 @@ function renderDay() {
     ? `Holiday / event: ${isHoliday}`
     : `${classes.length} scheduled class${classes.length === 1 ? "" : "es"}`;
 
-  const allBunked = classes.length && classes.every((item) => getStatus(selectedDate, item, "planned") === "bunk");
+  const activeClasses = classes.filter(item => getStatus(selectedDate, item, "actual") !== "cancelled");
+  const allBunked = activeClasses.length && activeClasses.every((item) => getStatus(selectedDate, item, "planned") === "bunk");
   els.markDayBunk.textContent = allBunked ? "Remove bunk day" : "Mandatory bunk day";
-  els.markDayBunk.disabled = classes.length === 0;
+  els.markDayBunk.disabled = activeClasses.length === 0;
 
   if (!classes.length) {
     els.scheduleList.innerHTML = `<div class="empty-state">No regular classes for this day.</div>`;
@@ -418,17 +476,19 @@ function renderDay() {
         const actual = getStatus(selectedDate, item, "actual");
         const planned = getStatus(selectedDate, item, "planned");
         const course = courses[item.course];
+        const isCancelled = actual === "cancelled";
         return `
-          <article class="class-item" data-course="${item.course}">
+          <article class="class-item${isCancelled ? " cancelled" : ""}" data-course="${item.course}">
             <div class="class-time">${item.start}<br />${item.end}</div>
             <div class="class-main">
               <strong>${course.name}</strong>
-              <span>${item.type}</span>
+              <span>${item.type}${isCancelled ? ` <span class="cancelled-badge">CANC</span>` : ""}</span>
             </div>
             <div class="class-actions" data-date="${key}" data-id="${id}">
               <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
               <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
-              <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk">B</button>
+              <button class="status-button cancelled-btn ${isCancelled ? "active" : ""}" data-field="actual" data-value="cancelled" title="Cancelled">⊘</button>
+              <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk" ${isCancelled ? "disabled" : ""}>B</button>
             </div>
           </article>
         `;
@@ -495,6 +555,9 @@ function calculateCourse(courseId, target) {
     classes.forEach((item) => {
       const actual = getStatus(date, item, "actual");
       const planned = getStatus(date, item, "planned");
+      if (actual === "cancelled") {
+        return;
+      }
       if (actual) {
         total += 1;
         if (actual === "attended") attended += 1;
@@ -528,6 +591,7 @@ async function loadUserState(username) {
 
 async function saveState() {
   if (!session?.username) return;
+  if (session.username === "admin") return;
   if (hasServer) {
     try {
       await api("/state", { username: session.username, token: session.token, state });
@@ -676,7 +740,7 @@ function renderWeekly() {
               <span class="week-day-label">${label}</span>
               <span class="week-day-date">${date.getDate()} ${monthNames[date.getMonth()].slice(0, 3)}</span>
               ${isToday ? "<span class=\"week-today-pip\"></span>" : ""}
-              ${isHol ? `<span class="week-hol-tag">${holidayMap.get(dateKey)}</span>` : ""}
+              ${isHol ? `<span class=\"week-hol-tag\">${holidayMap.get(dateKey)}</span>` : ""}
             </div>
             <div class="week-slots">
               ${isHol
@@ -685,12 +749,16 @@ function renderWeekly() {
                      <span class="week-slot-sub">${holidayMap.get(dateKey)}</span>
                    </div>`
         : slots.length
-          ? slots.map(cls => `
-                      <div class="week-slot" data-course="${cls.course}">
-                        <span class="week-slot-time">${cls.start} – ${cls.end}</span>
-                        <strong class="week-slot-name">${courses[cls.course].name}</strong>
-                        <span class="week-slot-sub">${cls.type}</span>
-                      </div>`).join("")
+          ? slots.map(clsItem => {
+              const actual = getStatus(date, clsItem, "actual");
+              const isCancelled = actual === "cancelled";
+              return `
+                <div class="week-slot${isCancelled ? " cancelled" : ""}" data-course="${clsItem.course}">
+                  <span class="week-slot-time">${clsItem.start} – ${clsItem.end}${isCancelled ? ` <span class="cancelled-badge">CANC</span>` : ""}</span>
+                  <strong class="week-slot-name">${courses[clsItem.course].name}</strong>
+                  <span class="week-slot-sub">${clsItem.type}</span>
+                </div>`;
+            }).join("")
           : `<div class="week-slot week-slot-empty">
                        <span class="week-slot-name">No classes</span>
                      </div>`
@@ -790,4 +858,784 @@ function longDate(date) {
 
 function shortDate(date) {
   return `${date.getDate()} ${monthNames[date.getMonth()].slice(0, 3)} ${date.getFullYear()}`;
+}
+
+// ─────────────────────────────────── ADMIN DASHBOARD LOGIC
+let adminUsersData = [];
+
+const userColors = [
+  "var(--course-AD)",
+  "var(--course-ABC)",
+  "var(--course-HUM)",
+  "var(--course-ARD)",
+  "var(--course-AT3)",
+  "var(--course-ABS)",
+  "var(--course-ALD)",
+  "var(--course-TDS)",
+  "var(--course-CF)",
+];
+
+function getUserColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % userColors.length;
+  return userColors[index];
+}
+
+function calculateCourseForState(userState, courseId, target) {
+  let attended = 0;
+  let total = 0;
+  let upcoming = 0;
+  let plannedBunks = 0;
+  const today = stripTime(getInitialDate());
+  const end = parseDate(semester.end);
+
+  for (let date = parseDate(semester.start); date <= end; date = addDays(date, 1)) {
+    const classes = getClassesForDate(date).filter((item) => item.course === courseId);
+    classes.forEach((item) => {
+      const records = userState.records[toKey(date)] || {};
+      const rec = records[classId(item)] || {};
+      const actual = rec.actual || null;
+      const planned = rec.planned || null;
+      if (actual === "cancelled") {
+        return;
+      }
+      if (actual) {
+        total += 1;
+        if (actual === "attended") attended += 1;
+      } else if (date >= today) {
+        upcoming += 1;
+        if (planned === "bunk") plannedBunks += 1;
+      }
+    });
+  }
+
+  const projectedTotal = total + upcoming;
+  const optionalBunks = Math.floor(attended + upcoming - plannedBunks - target * projectedTotal);
+  const canBunk = Math.max(0, optionalBunks);
+  const mustAttend = Math.max(0, upcoming - plannedBunks - canBunk);
+  return { attended, total, upcoming, plannedBunks, canBunk, mustAttend };
+}
+
+function calculateUserState(userState) {
+  const target = (userState.target || 75) / 100;
+  let totalAttended = 0;
+  let totalHeld = 0;
+  let totalMissed = 0;
+  let totalCancelled = 0;
+  let totalBunked = 0;
+
+  const courseStats = {};
+  Object.keys(courses).forEach((courseId) => {
+    const stats = calculateCourseForState(userState, courseId, target);
+    courseStats[courseId] = stats;
+    totalAttended += stats.attended;
+    totalHeld += stats.total;
+  });
+
+  for (const record of Object.values(userState.records || {})) {
+    for (const info of Object.values(record || {})) {
+      if (info.actual === "missed") {
+        totalMissed += 1;
+      } else if (info.actual === "cancelled") {
+        totalCancelled += 1;
+      }
+      if (info.planned === "bunk") {
+        totalBunked += 1;
+      }
+    }
+  }
+
+  const overallPercent = totalHeld ? Math.round((totalAttended / totalHeld) * 100) : 100;
+  return {
+    overallPercent,
+    totalHeld,
+    totalAttended,
+    totalMissed,
+    totalCancelled,
+    totalBunked,
+    courseStats,
+  };
+}
+
+async function loadAdminData() {
+  if (session?.username !== "admin") return;
+  try {
+    const result = await api(`/admin/users?token=${encodeURIComponent(session.token)}`);
+    adminUsersData = result.users || [];
+    renderAdminDashboard();
+  } catch (error) {
+    console.error("Failed to load admin data:", error);
+  }
+}
+
+function switchAdminTab(panelId) {
+  document.querySelectorAll("#adminAppBody .tab-btn").forEach((btn) => {
+    const active = btn.dataset.panel === panelId;
+    btn.classList.toggle("tab-active", active);
+    btn.setAttribute("aria-selected", active);
+  });
+  document.querySelectorAll(".admin-view-panel").forEach((panel) => {
+    panel.classList.toggle("hidden", panel.id !== panelId);
+  });
+  if (panelId === "adminCalendarView") {
+    renderAdminCalendar();
+    renderAdminDayDetails();
+  }
+}
+
+function renderAdminDashboard() {
+  renderAdminUsers();
+  renderAdminCalendar();
+  renderAdminDayDetails();
+  renderAdminStats();
+}
+
+function renderAdminUsers() {
+  const grid = document.querySelector("#adminUsersGrid");
+  if (!grid) return;
+
+  if (adminUsersData.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No users registered yet.</div>';
+    return;
+  }
+
+  grid.innerHTML = adminUsersData
+    .map((user) => {
+      const metrics = calculateUserState(user.state);
+      const color = getUserColor(user.username);
+      const createdStr = new Date(user.createdAt).toLocaleDateString();
+      const updatedStr = new Date(user.updatedAt).toLocaleDateString();
+
+      return `
+        <article class="summary-card admin-user-card" style="position: relative; padding-left: 24px;">
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: ${color};"></div>
+          <h3>@${user.username}</h3>
+          <span class="course-code" style="color: ${color};">Active User</span>
+          <div class="card-row"><span>Created</span><strong>${createdStr}</strong></div>
+          <div class="card-row"><span>Last Updated</span><strong>${updatedStr}</strong></div>
+          <div class="card-row"><span>Courses</span><strong>${Object.keys(courses).length} tracked</strong></div>
+          <div class="allowance" style="grid-template-columns: 1fr;">
+            <div class="metric-box">
+              <span>Overall Attendance</span>
+              <strong style="color: ${color};">${metrics.overallPercent}%</strong>
+              <small>${metrics.totalAttended} / ${metrics.totalHeld} classes held</small>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function hasSpecificAdminActivity(user, dateKey) {
+  const record = user.state.records[dateKey] || {};
+  const hasBunkOrCancel = Object.values(record).some(
+    (r) => r.planned === "bunk" || r.actual === "cancelled" || r.actual === "missed"
+  );
+  const hasEvent = (user.state.events || []).some((ev) => ev.date === dateKey);
+  return hasBunkOrCancel || hasEvent;
+}
+
+function renderAdminCalendar() {
+  const calendarEl = document.querySelector("#adminCalendar");
+  if (!calendarEl) return;
+
+  const months = getSemesterMonths();
+  calendarEl.innerHTML = months
+    .map(({ year, month }) => {
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
+      const blanks = Array.from({ length: first.getDay() }, () => `<span class="blank-date"></span>`).join("");
+      const dates = [];
+
+      for (let day = 1; day <= last.getDate(); day += 1) {
+        const date = new Date(year, month, day);
+        const key = toKey(date);
+        if (date < parseDate(semester.start) || date > parseDate(semester.end)) {
+          dates.push(`<span class="blank-date"></span>`);
+          continue;
+        }
+
+        const activeUsers = adminUsersData.filter((user) => hasSpecificAdminActivity(user, key));
+
+        const classes = [
+          "date-button",
+          "admin-date-btn",
+          key === toKey(selectedDate) ? "selected" : "",
+          key === toKey(getInitialDate()) ? "today" : "",
+          holidayMap.has(key) ? "holiday" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        const dotsHtml = activeUsers
+          .map(
+            (u) =>
+              `<span class="admin-dot" style="background: ${getUserColor(
+                u.username
+              )}" title="@${u.username}"></span>`
+          )
+          .join("");
+
+        dates.push(`
+          <button class="${classes}" data-date="${key}" title="${holidayMap.get(key) || ""}">
+            <span>${day}</span>
+            <span class="admin-dots">${dotsHtml}</span>
+          </button>
+        `);
+      }
+
+      return `
+        <section class="month">
+          <h4>${monthNames[month]} ${year}</h4>
+          <div class="weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+          <div class="dates">${blanks}${dates.join("")}</div>
+        </section>
+      `;
+    })
+    .join("");
+
+  calendarEl.querySelectorAll("[data-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedDate = parseDate(button.dataset.date);
+      renderAdminCalendar();
+      renderAdminDayDetails();
+    });
+  });
+}
+
+function renderAdminDayDetails() {
+  const container = document.querySelector("#adminDayDetails");
+  const title = document.querySelector("#adminSelectedDateTitle");
+  if (!container || !title) return;
+
+  const key = toKey(selectedDate);
+  title.textContent = longDate(selectedDate);
+
+  const classes = getClassesForDate(selectedDate);
+  const holiday = holidayMap.get(key);
+
+  if (holiday) {
+    container.innerHTML = `<div class="empty-state">Holiday / event: ${holiday}</div>`;
+    return;
+  }
+
+  let html = "";
+
+  adminUsersData.forEach((user) => {
+    const color = getUserColor(user.username);
+    const userRecords = user.state.records[key] || {};
+    const userEvents = (user.state.events || []).filter((ev) => ev.date === key);
+
+    let classHtml = "";
+    if (classes.length === 0) {
+      classHtml = `<div style="color: var(--muted); font-size: 0.7rem;">No classes scheduled.</div>`;
+    } else {
+      classHtml = classes
+        .map((item) => {
+          const id = classId(item);
+          const record = userRecords[id] || {};
+          let statusText = "Unmarked";
+          let statusClass = "unmarked";
+          if (record.actual === "attended") {
+            statusText = "Attended ✓";
+            statusClass = "attended";
+          } else if (record.actual === "missed") {
+            statusText = "Missed ✗";
+            statusClass = "missed";
+          } else if (record.actual === "cancelled") {
+            statusText = "Cancelled ⊘";
+            statusClass = "cancelled";
+          }
+
+          if (record.planned === "bunk") {
+            statusText += " (Planned Bunk)";
+          }
+
+          return `
+          <div class="admin-user-class-row">
+            <span><strong>${item.course}</strong> (${item.start} - ${item.end})</span>
+            <span class="admin-class-status ${statusClass}">${statusText}</span>
+          </div>
+        `;
+        })
+        .join("");
+    }
+
+    let eventHtml = "";
+    if (userEvents.length > 0) {
+      eventHtml = userEvents
+        .map(
+          (ev) => `
+        <div class="admin-user-event-row">
+          <span class="event-dot" style="background: ${color}"></span>
+          <span>${ev.name} ${ev.allDay ? "(All Day)" : `@ ${ev.time}`}</span>
+        </div>
+      `
+        )
+        .join("");
+    }
+
+    if (classes.length > 0 || userEvents.length > 0) {
+      html += `
+        <div class="admin-user-day-card" style="border-left: 3px solid ${color};">
+          <h4 style="color: ${color}; margin-bottom: 8px;">@${user.username}</h4>
+          <div class="admin-user-classes">
+            <p class="eyebrow" style="font-size: 0.55rem; margin-bottom: 4px;">Class Marks</p>
+            ${classHtml}
+          </div>
+          ${
+            userEvents.length > 0
+              ? `
+          <div class="admin-user-events" style="margin-top: 8px;">
+            <p class="eyebrow" style="font-size: 0.55rem; margin-bottom: 4px;">Events</p>
+            ${eventHtml}
+          </div>
+          `
+              : ""
+          }
+        </div>
+      `;
+    }
+  });
+
+  container.innerHTML = html || '<div class="empty-state">No user activity recorded for this day.</div>';
+}
+
+function renderAdminStats() {
+  const tbody = document.querySelector("#adminStatsTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = adminUsersData
+    .map((user) => {
+      const color = getUserColor(user.username);
+      const metrics = calculateUserState(user.state);
+
+      const formatCoursePercent = (courseId) => {
+        const stats = metrics.courseStats[courseId];
+        if (!stats) return "-";
+        return stats.total ? `${Math.round((stats.attended / stats.total) * 100)}%` : "100%";
+      };
+
+      const lastActive = user.updatedAt
+        ? new Date(user.updatedAt).toLocaleString()
+        : new Date(user.createdAt).toLocaleString();
+
+      return `
+      <tr>
+        <td style="color: ${color}; font-weight: bold;">@${user.username}</td>
+        <td style="font-size: 0.7rem; color: var(--muted);">${lastActive}</td>
+        <td style="font-weight: bold; color: ${color};">${metrics.overallPercent}%</td>
+        <td>${formatCoursePercent("AD")}</td>
+        <td>${formatCoursePercent("ABC")}</td>
+        <td>${formatCoursePercent("HUM")}</td>
+        <td>${formatCoursePercent("ARD")}</td>
+        <td>${formatCoursePercent("AT3")}</td>
+        <td>${formatCoursePercent("ABS")}</td>
+        <td>${formatCoursePercent("ALD")}</td>
+        <td>${formatCoursePercent("TDS")}</td>
+        <td>${formatCoursePercent("CF")}</td>
+        <td>${metrics.totalHeld}</td>
+        <td style="color: var(--green); font-weight: bold;">${metrics.totalAttended}</td>
+        <td style="color: var(--red);">${metrics.totalMissed}</td>
+        <td style="color: var(--muted);">${metrics.totalCancelled}</td>
+        <td style="color: var(--purple);">${metrics.totalBunked}</td>
+        <td>${user.state.events?.length || 0}</td>
+      </tr>
+    `;
+    })
+    .join("");
+}
+
+// ─────────────────────────────────── ADMIN DASHBOARD LOGIC
+let adminUsersData = [];
+
+const userColors = [
+  "var(--course-AD)",
+  "var(--course-ABC)",
+  "var(--course-HUM)",
+  "var(--course-ARD)",
+  "var(--course-AT3)",
+  "var(--course-ABS)",
+  "var(--course-ALD)",
+  "var(--course-TDS)",
+  "var(--course-CF)",
+];
+
+function getUserColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % userColors.length;
+  return userColors[index];
+}
+
+function calculateCourseForState(userState, courseId, target) {
+  let attended = 0;
+  let total = 0;
+  let upcoming = 0;
+  let plannedBunks = 0;
+  const today = stripTime(getInitialDate());
+  const end = parseDate(semester.end);
+
+  for (let date = parseDate(semester.start); date <= end; date = addDays(date, 1)) {
+    const classes = getClassesForDate(date).filter((item) => item.course === courseId);
+    classes.forEach((item) => {
+      const records = userState.records[toKey(date)] || {};
+      const rec = records[classId(item)] || {};
+      const actual = rec.actual || null;
+      const planned = rec.planned || null;
+      if (actual === "cancelled") {
+        return;
+      }
+      if (actual) {
+        total += 1;
+        if (actual === "attended") attended += 1;
+      } else if (date >= today) {
+        upcoming += 1;
+        if (planned === "bunk") plannedBunks += 1;
+      }
+    });
+  }
+
+  const projectedTotal = total + upcoming;
+  const optionalBunks = Math.floor(attended + upcoming - plannedBunks - target * projectedTotal);
+  const canBunk = Math.max(0, optionalBunks);
+  const mustAttend = Math.max(0, upcoming - plannedBunks - canBunk);
+  return { attended, total, upcoming, plannedBunks, canBunk, mustAttend };
+}
+
+function calculateUserState(userState) {
+  const target = (userState.target || 75) / 100;
+  let totalAttended = 0;
+  let totalHeld = 0;
+  let totalMissed = 0;
+  let totalCancelled = 0;
+  let totalBunked = 0;
+
+  const courseStats = {};
+  Object.keys(courses).forEach((courseId) => {
+    const stats = calculateCourseForState(userState, courseId, target);
+    courseStats[courseId] = stats;
+    totalAttended += stats.attended;
+    totalHeld += stats.total;
+  });
+
+  for (const record of Object.values(userState.records || {})) {
+    for (const info of Object.values(record || {})) {
+      if (info.actual === "missed") {
+        totalMissed += 1;
+      } else if (info.actual === "cancelled") {
+        totalCancelled += 1;
+      }
+      if (info.planned === "bunk") {
+        totalBunked += 1;
+      }
+    }
+  }
+
+  const overallPercent = totalHeld ? Math.round((totalAttended / totalHeld) * 100) : 100;
+  return {
+    overallPercent,
+    totalHeld,
+    totalAttended,
+    totalMissed,
+    totalCancelled,
+    totalBunked,
+    courseStats,
+  };
+}
+
+async function loadAdminData() {
+  if (session?.username !== "admin") return;
+  try {
+    const result = await api(`/admin/users?token=${encodeURIComponent(session.token)}`);
+    adminUsersData = result.users || [];
+    renderAdminDashboard();
+  } catch (error) {
+    console.error("Failed to load admin data:", error);
+  }
+}
+
+function switchAdminTab(panelId) {
+  document.querySelectorAll("#adminAppBody .tab-btn").forEach((btn) => {
+    const active = btn.dataset.panel === panelId;
+    btn.classList.toggle("tab-active", active);
+    btn.setAttribute("aria-selected", active);
+  });
+  document.querySelectorAll(".admin-view-panel").forEach((panel) => {
+    panel.classList.toggle("hidden", panel.id !== panelId);
+  });
+  if (panelId === "adminCalendarView") {
+    renderAdminCalendar();
+    renderAdminDayDetails();
+  }
+}
+
+function renderAdminDashboard() {
+  renderAdminUsers();
+  renderAdminCalendar();
+  renderAdminDayDetails();
+  renderAdminStats();
+}
+
+function renderAdminUsers() {
+  const grid = document.querySelector("#adminUsersGrid");
+  if (!grid) return;
+
+  if (adminUsersData.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No users registered yet.</div>';
+    return;
+  }
+
+  grid.innerHTML = adminUsersData
+    .map((user) => {
+      const metrics = calculateUserState(user.state);
+      const color = getUserColor(user.username);
+      const createdStr = new Date(user.createdAt).toLocaleDateString();
+      const updatedStr = new Date(user.updatedAt).toLocaleDateString();
+
+      return `
+        <article class="summary-card admin-user-card" style="position: relative; padding-left: 24px;">
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: ${color};"></div>
+          <h3>@${user.username}</h3>
+          <span class="course-code" style="color: ${color};">Active User</span>
+          <div class="card-row"><span>Created</span><strong>${createdStr}</strong></div>
+          <div class="card-row"><span>Last Updated</span><strong>${updatedStr}</strong></div>
+          <div class="card-row"><span>Courses</span><strong>${Object.keys(courses).length} tracked</strong></div>
+          <div class="allowance" style="grid-template-columns: 1fr;">
+            <div class="metric-box">
+              <span>Overall Attendance</span>
+              <strong style="color: ${color};">${metrics.overallPercent}%</strong>
+              <small>${metrics.totalAttended} / ${metrics.totalHeld} classes held</small>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function hasSpecificAdminActivity(user, dateKey) {
+  const record = user.state.records[dateKey] || {};
+  const hasBunkOrCancel = Object.values(record).some(
+    (r) => r.planned === "bunk" || r.actual === "cancelled" || r.actual === "missed"
+  );
+  const hasEvent = (user.state.events || []).some((ev) => ev.date === dateKey);
+  return hasBunkOrCancel || hasEvent;
+}
+
+function renderAdminCalendar() {
+  const calendarEl = document.querySelector("#adminCalendar");
+  if (!calendarEl) return;
+
+  const months = getSemesterMonths();
+  calendarEl.innerHTML = months
+    .map(({ year, month }) => {
+      const first = new Date(year, month, 1);
+      const last = new Date(year, month + 1, 0);
+      const blanks = Array.from({ length: first.getDay() }, () => `<span class="blank-date"></span>`).join("");
+      const dates = [];
+
+      for (let day = 1; day <= last.getDate(); day += 1) {
+        const date = new Date(year, month, day);
+        const key = toKey(date);
+        if (date < parseDate(semester.start) || date > parseDate(semester.end)) {
+          dates.push(`<span class="blank-date"></span>`);
+          continue;
+        }
+
+        const activeUsers = adminUsersData.filter((user) => hasSpecificAdminActivity(user, key));
+
+        const classes = [
+          "date-button",
+          "admin-date-btn",
+          key === toKey(selectedDate) ? "selected" : "",
+          key === toKey(getInitialDate()) ? "today" : "",
+          holidayMap.has(key) ? "holiday" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        const dotsHtml = activeUsers
+          .map(
+            (u) =>
+              `<span class="admin-dot" style="background: ${getUserColor(
+                u.username
+              )}" title="@${u.username}"></span>`
+          )
+          .join("");
+
+        dates.push(`
+          <button class="${classes}" data-date="${key}" title="${holidayMap.get(key) || ""}">
+            <span>${day}</span>
+            <span class="admin-dots">${dotsHtml}</span>
+          </button>
+        `);
+      }
+
+      return `
+        <section class="month">
+          <h4>${monthNames[month]} ${year}</h4>
+          <div class="weekdays"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+          <div class="dates">${blanks}${dates.join("")}</div>
+        </section>
+      `;
+    })
+    .join("");
+
+  calendarEl.querySelectorAll("[data-date]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectedDate = parseDate(button.dataset.date);
+      renderAdminCalendar();
+      renderAdminDayDetails();
+    });
+  });
+}
+
+function renderAdminDayDetails() {
+  const container = document.querySelector("#adminDayDetails");
+  const title = document.querySelector("#adminSelectedDateTitle");
+  if (!container || !title) return;
+
+  const key = toKey(selectedDate);
+  title.textContent = longDate(selectedDate);
+
+  const classes = getClassesForDate(selectedDate);
+  const holiday = holidayMap.get(key);
+
+  if (holiday) {
+    container.innerHTML = `<div class="empty-state">Holiday / event: ${holiday}</div>`;
+    return;
+  }
+
+  let html = "";
+
+  adminUsersData.forEach((user) => {
+    const color = getUserColor(user.username);
+    const userRecords = user.state.records[key] || {};
+    const userEvents = (user.state.events || []).filter((ev) => ev.date === key);
+
+    let classHtml = "";
+    if (classes.length === 0) {
+      classHtml = `<div style="color: var(--muted); font-size: 0.7rem;">No classes scheduled.</div>`;
+    } else {
+      classHtml = classes
+        .map((item) => {
+          const id = classId(item);
+          const record = userRecords[id] || {};
+          let statusText = "Unmarked";
+          let statusClass = "unmarked";
+          if (record.actual === "attended") {
+            statusText = "Attended ✓";
+            statusClass = "attended";
+          } else if (record.actual === "missed") {
+            statusText = "Missed ✗";
+            statusClass = "missed";
+          } else if (record.actual === "cancelled") {
+            statusText = "Cancelled ⊘";
+            statusClass = "cancelled";
+          }
+
+          if (record.planned === "bunk") {
+            statusText += " (Planned Bunk)";
+          }
+
+          return `
+          <div class="admin-user-class-row">
+            <span><strong>${item.course}</strong> (${item.start} - ${item.end})</span>
+            <span class="admin-class-status ${statusClass}">${statusText}</span>
+          </div>
+        `;
+        })
+        .join("");
+    }
+
+    let eventHtml = "";
+    if (userEvents.length > 0) {
+      eventHtml = userEvents
+        .map(
+          (ev) => `
+        <div class="admin-user-event-row">
+          <span class="event-dot" style="background: ${color}"></span>
+          <span>${ev.name} ${ev.allDay ? "(All Day)" : `@ ${ev.time}`}</span>
+        </div>
+      `
+        )
+        .join("");
+    }
+
+    if (classes.length > 0 || userEvents.length > 0) {
+      html += `
+        <div class="admin-user-day-card" style="border-left: 3px solid ${color};">
+          <h4 style="color: ${color}; margin-bottom: 8px;">@${user.username}</h4>
+          <div class="admin-user-classes">
+            <p class="eyebrow" style="font-size: 0.55rem; margin-bottom: 4px;">Class Marks</p>
+            ${classHtml}
+          </div>
+          ${
+            userEvents.length > 0
+              ? `
+          <div class="admin-user-events" style="margin-top: 8px;">
+            <p class="eyebrow" style="font-size: 0.55rem; margin-bottom: 4px;">Events</p>
+            ${eventHtml}
+          </div>
+          `
+              : ""
+          }
+        </div>
+      `;
+    }
+  });
+
+  container.innerHTML = html || '<div class="empty-state">No user activity recorded for this day.</div>';
+}
+
+function renderAdminStats() {
+  const tbody = document.querySelector("#adminStatsTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = adminUsersData
+    .map((user) => {
+      const color = getUserColor(user.username);
+      const metrics = calculateUserState(user.state);
+
+      const formatCoursePercent = (courseId) => {
+        const stats = metrics.courseStats[courseId];
+        if (!stats) return "-";
+        return stats.total ? `${Math.round((stats.attended / stats.total) * 100)}%` : "100%";
+      };
+
+      const lastActive = user.updatedAt
+        ? new Date(user.updatedAt).toLocaleString()
+        : new Date(user.createdAt).toLocaleString();
+
+      return `
+      <tr>
+        <td style="color: ${color}; font-weight: bold;">@${user.username}</td>
+        <td style="font-size: 0.7rem; color: var(--muted);">${lastActive}</td>
+        <td style="font-weight: bold; color: ${color};">${metrics.overallPercent}%</td>
+        <td>${formatCoursePercent("AD")}</td>
+        <td>${formatCoursePercent("ABC")}</td>
+        <td>${formatCoursePercent("HUM")}</td>
+        <td>${formatCoursePercent("ARD")}</td>
+        <td>${formatCoursePercent("AT3")}</td>
+        <td>${formatCoursePercent("ABS")}</td>
+        <td>${formatCoursePercent("ALD")}</td>
+        <td>${formatCoursePercent("TDS")}</td>
+        <td>${formatCoursePercent("CF")}</td>
+        <td>${metrics.totalHeld}</td>
+        <td style="color: var(--green); font-weight: bold;">${metrics.totalAttended}</td>
+        <td style="color: var(--red);">${metrics.totalMissed}</td>
+        <td style="color: var(--muted);">${metrics.totalCancelled}</td>
+        <td style="color: var(--purple);">${metrics.totalBunked}</td>
+        <td>${user.state.events?.length || 0}</td>
+      </tr>
+    `;
+    })
+    .join("");
 }
