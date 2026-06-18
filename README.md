@@ -14,8 +14,10 @@ A personal attendance tracker for **Academy of Architecture · Semester V** stud
   - **Must Attend** — how many upcoming classes you cannot miss.
 - **Semester calendar** — Full semester calendar (June – October 2026) with colour-coded dots for bunked and marked days. Click any day to jump to it.
 - **Bunk-day shortcut** — Mark an entire day as a mandatory bunk with one button.
-- **Adjustable target** — Slide the attendance target between 75 % and 95 % to see how the projections change in real time.
+- **Adjustable target** — Slide the attendance target between 75% and 95% to see how the projections change in real time.
 - **Two themes** — Switch between the **Forest** (dark green) and **Rose** (deep pink) colour schemes from the top navigation bar.
+- **Event & task planner** — Schedule custom events/tasks for any date using the floating action button (`+`). Events are saved in your state and show up under your day's schedule.
+- **Weekly schedule view** — View the full week's timetable in a dedicated tab with holiday warnings and click-to-navigate daily shortcuts.
 - **Responsive layout** — Works on desktops, tablets, and phones.
 
 ---
@@ -38,12 +40,18 @@ No framework, no bundler, no dependencies — just `node server.js`.
 
 ```
 attendance-tracker-s/
-├── index.html      # Single-page shell (auth, welcome, tracker screens)
-├── styles.css      # All styles — themes, layout, components, responsive
-├── app.js          # All client-side logic — auth, rendering, state management
-├── server.js       # Node.js HTTP server — static files + JSON REST API
-├── data.json       # Flat-file user database (auto-created, gitignored)
-└── package.json    # npm metadata + start script
+├── api/
+│   └── index.js        # Vercel serverless API handler
+├── public/
+│   ├── index.html      # Single-page front-end shell
+│   ├── styles.css      # Styling (CSS variables, layout, components, themes)
+│   ├── app.js          # Client-side state and UI rendering logic
+│   ├── favicon.png     # Application icon
+│   └── [1-3].png       # Asset images
+├── vercel.json         # Vercel routing configuration
+├── server.js           # Local Node.js HTTP server (delegates to api/index.js)
+├── data.json           # Local JSON fallback database (gitignored)
+└── package.json        # npm metadata, scripts, and dependencies
 ```
 
 ---
@@ -52,9 +60,19 @@ attendance-tracker-s/
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) v18 or later (no npm packages to install)
+- [Node.js](https://nodejs.org/) v18 or later
+
+### Installation
+
+Clone the repository and install dependencies:
+
+```bash
+npm install
+```
 
 ### Run the server
+
+For local development without remote database environment variables:
 
 ```bash
 node server.js
@@ -62,13 +80,35 @@ node server.js
 npm start
 ```
 
-The app is now available at **http://localhost:3000**.
+The local development database will automatically be created at `data.json` in the root directory. The app will be available at **http://localhost:3000**.
 
-> **Note:** You can also open `index.html` directly in a browser without running the server. In that mode the app skips all API calls and stores data in `localStorage` instead.
+> **Note:** You can also open `public/index.html` directly in a browser without running the server. In that mode, the app skips all API calls and stores data in `localStorage` instead.
+
+### Local Development with Environment Variables
+
+To run the server locally with simulated Vercel serverless integration, create a `.env.local` file in the root directory:
+
+```env
+JWT_SECRET="your-local-random-secret"
+UPSTASH_REDIS_REST_URL="https://your-upstash-redis-url"
+UPSTASH_REDIS_REST_TOKEN="your-upstash-redis-token"
+```
+
+To run the server utilizing these environment variables:
+
+- **Using Node v20.6.0+ native env file support:**
+  ```bash
+  node --env-file=.env.local server.js
+  ```
+- **Using Vercel CLI (recommended for full environment parity):**
+  ```bash
+  npm i -g vercel
+  vercel dev
+  ```
 
 ### Change the port
 
-Set the `PORT` environment variable before starting:
+Set the `PORT` environment variable before starting (only applies when running `server.js` directly):
 
 ```bash
 PORT=8080 node server.js
@@ -76,7 +116,7 @@ PORT=8080 node server.js
 
 ### Use a custom data file
 
-By default user data is written to `data.json` in the project root. Override this path with `DATA_FILE`:
+By default, local user data is written to `data.json` in the project root when Vercel Upstash variables are not defined. Override this path with `DATA_FILE`:
 
 ```bash
 DATA_FILE=/var/data/attendance.json node server.js
@@ -118,7 +158,15 @@ Returns `200` with `{ username, state }`.
 ### `POST /api/state`
 
 ```json
-{ "username": "sanika", "token": "<token>", "state": { "target": 75, "records": {} } }
+{
+  "username": "sanika",
+  "token": "<token>",
+  "state": {
+    "target": 75,
+    "records": {},
+    "events": []
+  }
+}
 ```
 
 Returns `200` with the saved `{ username, state }`.
@@ -161,12 +209,22 @@ Returns `200` with the saved `{ username, state }`.
         "planned": "bunk"
       }
     }
-  }
+  },
+  "events": [
+    {
+      "id": "jr7y48s2",
+      "name": "Jury Submission",
+      "date": "2026-06-16",
+      "allDay": false,
+      "time": "10:30"
+    }
+  ]
 }
 ```
 
 - **`target`** — Attendance percentage goal (75–95).
-- **`records`** — Keyed by `YYYY-MM-DD`. Each day maps class IDs (built from `COURSE-START-END`) to an object with optional `actual` (`"attended"` | `"missed"`) and `planned` (`"bunk"`) fields.
+- **`records`** — Keyed by `YYYY-MM-DD`. Each day maps class IDs (built from `COURSE-START-END` with whitespace removed) to an object with optional `actual` (`"attended"` | `"missed"`) and `planned` (`"bunk"`) fields.
+- **`events`** — An array of custom event/task objects scheduled by the user. Each event has a unique `id`, `name`, `date` (`YYYY-MM-DD`), `allDay` (boolean), and optional `time` (e.g., `"10:30"`).
 
 ---
 
@@ -193,24 +251,24 @@ const semester = {
 | `ABS` | Architectural Building Services | Studio |
 | `ALD` | Landscaping & Allied Design | Studio |
 | `TDS` | Theory & Design of Structures | Lecture |
-| `CF`  | College Projects | — |
+| `CF`  | College Projects | Sem V |
 
 ### Weekly Schedule
 
-| Day | Slot 1 (7:50 – 10:20) | Slot 2 (11:00 – 12:30 / 2:00) | Slot 3 |
+| Day | Slot 1 (7:30 AM – 10:30 AM) | Slot 2 (11:00 AM – 12:30 PM / 2:00 PM) | Slot 3 (12:30 PM – 2:00 PM) |
 |---|---|---|---|
-| Monday | ARD Studio | ARD Studio (ends 12:30) | AT3 Lecture (12:30 – 2:00) |
-| Tuesday | AD Studio | HUM Lecture | — |
-| Wednesday | ABS Studio | ALD Studio | — |
-| Thursday | ABC Lecture/Studio | TDS Lecture | — |
-| Friday | AD Studio | CF (College Projects) | — |
-| Sunday | — | — | — |
+| Monday | ARD Studio | ARD Studio (11:00 AM – 12:30 PM) | AT3 Lecture (12:30 PM – 2:00 PM) |
+| Tuesday | AD Studio | HUM Lecture (11:00 AM – 2:00 PM) | — |
+| Wednesday | ABS Studio | ALD Studio (11:00 AM – 2:00 PM) | — |
+| Thursday | ABC Lecture/Studio | TDS Lecture (11:00 AM – 2:00 PM) | — |
+| Friday | AD Studio | CF (College Projects) (11:00 AM – 2:00 PM) | — |
 
 ### Holidays
 
 | Date | Event |
 |---|---|
 | 2026-06-01 | Bakri Id / Commencement day |
+| 2026-06-02 – 08 | Elective week |
 | 2026-06-26 | Moharram |
 | 2026-08-15 | Independence Day / Parsi New Year |
 | 2026-08-26 | Id-e-Milad |
@@ -225,9 +283,9 @@ const semester = {
 ## Security Notes
 
 - Passwords are hashed with **Node.js `crypto.scryptSync`** (salt length 16 bytes, key length 64 bytes). Plain-text passwords are never stored.
-- Session tokens are 32-byte cryptographically random hex strings held in memory. They are lost when the server restarts (users will need to log in again).
-- The server blocks direct access to `data.json`, `server.js`, and `package.json` via static file serving.
-- Path traversal is prevented by resolving the requested path and checking that it starts within the project root.
+- Session tokens are stateless **HMAC-SHA256 JWTs** signed with a server secret (`JWT_SECRET`). They survive server restarts and cold starts.
+- The server blocks direct access to root files like `data.json`, `server.js`, and `package.json` via static file serving.
+- Path traversal is prevented by resolving the requested path and checking that it starts within the static asset folder (`public/`).
 
 ---
 
@@ -319,12 +377,12 @@ Two architectural changes were required for serverless compatibility:
 | Sessions | In-memory `Map` (lost on cold start) | **HMAC-SHA256 JWT** (stateless, self-contained) |
 | User data | `data.json` file writes (ephemeral on Vercel) | **Upstash Redis** REST API (persistent) |
 
-`server.js` is **unchanged** and still used for local development (`node server.js`).
+`server.js` is used for local development (`node server.js`), serving static files from `public/` and delegating API endpoints to `api/index.js`.
 
-Required environment variables on Vercel:
+Required environment variables on Vercel (or local simulation):
 
-| Variable | Where to get it |
+| Variable | Description / Where to get it |
 |---|---|
-| `JWT_SECRET` | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `UPSTASH_REDIS_REST_URL` | Vercel dashboard → Storage → Upstash Redis integration |
-| `UPSTASH_REDIS_REST_TOKEN` | Same as above |
+| `JWT_SECRET` | Any long random string. Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `KV_REST_API_URL` or `UPSTASH_REDIS_REST_URL` | Upstash/Vercel KV endpoint URL |
+| `KV_REST_API_TOKEN` or `UPSTASH_REDIS_REST_TOKEN` | Upstash/Vercel KV endpoint Bearer token |
