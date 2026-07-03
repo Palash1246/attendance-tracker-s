@@ -276,6 +276,22 @@ function bindGlobalEvents() {
     });
   }
 
+  const signupToggle = document.querySelector("#adminDisableRegistration");
+  if (signupToggle) {
+    signupToggle.addEventListener("change", async () => {
+      const disabled = signupToggle.checked;
+      try {
+        await api("/admin/settings", {
+          token: session.token,
+          registrationDisabled: disabled,
+        });
+      } catch (error) {
+        alert(error.message || "Failed to update global settings.");
+        signupToggle.checked = !disabled;
+      }
+    });
+  }
+
   document.querySelectorAll("#adminAppBody .tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchAdminTab(btn.dataset.panel));
   });
@@ -582,7 +598,12 @@ async function loadUserState(username) {
     hasServer = true;
     return true;
   } catch (error) {
-    if (error.status === 401) return false;
+    if (error.status === 401 || error.status === 403) {
+      if (error.status === 403) {
+        alert(error.message || "Your account has been blocked.");
+      }
+      return false;
+    }
     state = loadLocalState(username);
     hasServer = false;
     return true;
@@ -596,7 +617,12 @@ async function saveState() {
     try {
       await api("/state", { username: session.username, token: session.token, state });
       return;
-    } catch {
+    } catch (error) {
+      if (error.status === 403) {
+        alert(error.message || "Your account has been blocked.");
+        els.logout.click();
+        return;
+      }
       hasServer = false;
     }
   }
@@ -965,6 +991,17 @@ async function loadAdminData() {
   try {
     const result = await api(`/admin/users?token=${encodeURIComponent(session.token)}`);
     adminUsersData = result.users || [];
+
+    try {
+      const settingsResult = await api(`/admin/settings?token=${encodeURIComponent(session.token)}`);
+      const signupToggle = document.querySelector("#adminDisableRegistration");
+      if (signupToggle && settingsResult) {
+        signupToggle.checked = !!settingsResult.registrationDisabled;
+      }
+    } catch (err) {
+      console.error("Failed to load admin settings:", err);
+    }
+
     renderAdminDashboard();
   } catch (error) {
     console.error("Failed to load admin data:", error);
@@ -1005,29 +1042,62 @@ function renderAdminUsers() {
   grid.innerHTML = adminUsersData
     .map((user) => {
       const metrics = calculateUserState(user.state);
+      const isBlocked = user.blocked === true;
       const color = getUserColor(user.username);
+      const statusLabel = isBlocked ? "Blocked User" : "Active User";
+      const statusColor = isBlocked ? "var(--red)" : color;
+      const blockBtnText = isBlocked ? "Unblock User" : "Block User";
+      const blockBtnClass = isBlocked ? "primary-action" : "ghost-action";
       const createdStr = new Date(user.createdAt).toLocaleDateString();
       const updatedStr = new Date(user.updatedAt).toLocaleDateString();
 
       return `
-        <article class="summary-card admin-user-card" style="position: relative; padding-left: 24px;">
-          <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: ${color};"></div>
+        <article class="summary-card admin-user-card" style="position: relative; padding-left: 24px; opacity: ${isBlocked ? 0.7 : 1};">
+          <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: ${statusColor};"></div>
           <h3>@${user.username}</h3>
-          <span class="course-code" style="color: ${color};">Active User</span>
+          <span class="course-code" style="color: ${statusColor};">${statusLabel}</span>
           <div class="card-row"><span>Created</span><strong>${createdStr}</strong></div>
           <div class="card-row"><span>Last Updated</span><strong>${updatedStr}</strong></div>
           <div class="card-row"><span>Courses</span><strong>${Object.keys(courses).length} tracked</strong></div>
           <div class="allowance" style="grid-template-columns: 1fr;">
             <div class="metric-box">
               <span>Overall Attendance</span>
-              <strong style="color: ${color};">${metrics.overallPercent}%</strong>
+              <strong style="color: ${statusColor};">${metrics.overallPercent}%</strong>
               <small>${metrics.totalAttended} / ${metrics.totalHeld} classes held</small>
             </div>
+          </div>
+          <div style="margin-top: 12px;">
+            <button class="block-toggle-btn ${blockBtnClass}" data-username="${user.username}" data-blocked="${isBlocked}" style="width: 100%; font-size: 0.65rem; padding: 6px 12px; height: auto;">
+              ${blockBtnText}
+            </button>
           </div>
         </article>
       `;
     })
     .join("");
+
+  grid.querySelectorAll(".block-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const username = btn.dataset.username;
+      const currentlyBlocked = btn.dataset.blocked === "true";
+      const confirmMsg = currentlyBlocked
+        ? `Are you sure you want to unblock @${username}?`
+        : `Are you sure you want to block @${username}? They will lose access to the site immediately.`;
+
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        await api("/admin/toggle-block", {
+          token: session.token,
+          username,
+          blocked: !currentlyBlocked,
+        });
+        await loadAdminData();
+      } catch (error) {
+        alert(error.message || "Failed to toggle block status.");
+      }
+    });
+  });
 }
 
 function hasSpecificAdminActivity(user, dateKey) {
@@ -1213,6 +1283,11 @@ function renderAdminStats() {
     .map((user) => {
       const color = getUserColor(user.username);
       const metrics = calculateUserState(user.state);
+      const isBlocked = user.blocked === true;
+      const usernameText = isBlocked ? `@${user.username} (Blocked)` : `@${user.username}`;
+      const usernameStyle = isBlocked
+        ? `color: var(--red); font-weight: bold; text-decoration: line-through;`
+        : `color: ${color}; font-weight: bold;`;
 
       const formatCoursePercent = (courseId) => {
         const stats = metrics.courseStats[courseId];
@@ -1225,10 +1300,10 @@ function renderAdminStats() {
         : new Date(user.createdAt).toLocaleString();
 
       return `
-      <tr>
-        <td style="color: ${color}; font-weight: bold;">@${user.username}</td>
+      <tr style="opacity: ${isBlocked ? 0.7 : 1};">
+        <td style="${usernameStyle}">${usernameText}</td>
         <td style="font-size: 0.7rem; color: var(--muted);">${lastActive}</td>
-        <td style="font-weight: bold; color: ${color};">${metrics.overallPercent}%</td>
+        <td style="font-weight: bold; color: ${isBlocked ? "var(--red)" : color};">${metrics.overallPercent}%</td>
         <td>${formatCoursePercent("AD")}</td>
         <td>${formatCoursePercent("ABC")}</td>
         <td>${formatCoursePercent("HUM")}</td>

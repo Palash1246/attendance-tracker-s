@@ -175,6 +175,11 @@ module.exports = async (req, res) => {
       if (username === "admin")
         return send(res, 400, { error: "Username 'admin' is reserved." });
 
+      // Check if registration is globally disabled
+      const settings = (await kvGet("settings:global")) || {};
+      if (settings.registrationDisabled)
+        return send(res, 403, { error: "Registration is temporarily disabled by the administrator." });
+
       if (await kvGet(`user:${username}`))
         return send(res, 409, { error: "That username is already taken." });
 
@@ -199,6 +204,9 @@ module.exports = async (req, res) => {
       if (!user || !verifyPassword(user, String(body.password || "")))
         return send(res, 401, { error: "Incorrect username or password." });
 
+      if (user.blocked === true)
+        return send(res, 403, { error: "Your account has been blocked by the administrator." });
+
       return send(res, 200, { username, token: signToken(username), state: normalizeState(user.state) });
     }
 
@@ -213,6 +221,10 @@ module.exports = async (req, res) => {
 
       const user = await kvGet(`user:${username}`);
       if (!user) return send(res, 404, { error: "User not found." });
+
+      if (user.blocked === true)
+        return send(res, 403, { error: "Your account has been blocked by the administrator." });
+
       return send(res, 200, { username, state: normalizeState(user.state) });
     }
 
@@ -226,6 +238,9 @@ module.exports = async (req, res) => {
 
       const user = await kvGet(`user:${username}`);
       if (!user) return send(res, 404, { error: "User not found." });
+
+      if (user.blocked === true)
+        return send(res, 403, { error: "Your account has been blocked by the administrator." });
 
       user.state     = normalizeState(body.state);
       user.updatedAt = new Date().toISOString();
@@ -268,10 +283,66 @@ module.exports = async (req, res) => {
             createdAt: u.createdAt || "2026-06-16T00:00:00.000Z",
             updatedAt: u.updatedAt || u.createdAt || "2026-06-16T00:00:00.000Z",
             state: normalizeState(u.state),
+            blocked: !!u.blocked,
           });
         }
       }
       return send(res, 200, { users });
+    }
+
+    // ── GET /api/admin/settings ─────────────────────────────────────
+    if (req.method === "GET" && pathname === "/api/admin/settings") {
+      const qs = new URL(matchedPath, "http://x").searchParams;
+      const payload = verifyToken(qs.get("token"));
+
+      if (!payload || payload.role !== "admin")
+        return send(res, 401, { error: "Unauthorized access." });
+
+      const settings = (await kvGet("settings:global")) || {};
+      return send(res, 200, {
+        registrationDisabled: !!settings.registrationDisabled,
+      });
+    }
+
+    // ── POST /api/admin/settings ────────────────────────────────────
+    if (req.method === "POST" && pathname === "/api/admin/settings") {
+      const payload = verifyToken(body.token);
+
+      if (!payload || payload.role !== "admin")
+        return send(res, 401, { error: "Unauthorized access." });
+
+      const settings = (await kvGet("settings:global")) || {};
+      settings.registrationDisabled = !!body.registrationDisabled;
+      await kvSet("settings:global", settings);
+
+      return send(res, 200, { success: true, settings });
+    }
+
+    // ── POST /api/admin/toggle-block ────────────────────────────────
+    if (req.method === "POST" && pathname === "/api/admin/toggle-block") {
+      const payload = verifyToken(body.token);
+
+      if (!payload || payload.role !== "admin")
+        return send(res, 401, { error: "Unauthorized access." });
+
+      const targetUsername = cleanUsername(body.username);
+      if (!targetUsername) {
+        return send(res, 400, { error: "Username is required." });
+      }
+      if (targetUsername === "admin") {
+        return send(res, 400, { error: "Cannot block admin user." });
+      }
+
+      const user = await kvGet(`user:${targetUsername}`);
+      if (!user) {
+        return send(res, 404, { error: "User not found." });
+      }
+
+      user.blocked = !!body.blocked;
+      user.updatedAt = new Date().toISOString();
+      await kvSet(`user:${targetUsername}`, user);
+
+      return send(res, 200, { success: true, username: targetUsername, blocked: user.blocked });
     }
 
     return send(res, 404, { error: "Not found." });
