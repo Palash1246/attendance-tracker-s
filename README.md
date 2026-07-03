@@ -8,7 +8,8 @@ A personal attendance tracker for **Academy of Architecture · Semester V** stud
 
 - **Multi-user auth** — Register and log in with a username and password. Credentials are stored server-side using `scrypt`-hashed passwords.
 - **Offline fallback** — If the server is unreachable (or you open the file directly), the app falls back to `localStorage` so nothing is lost.
-- **Per-course attendance tracking** — Mark each class as *Attended*, *Missed*, or a *Mandatory Bunk* (planned absence).
+- **Per-course attendance tracking** — Mark each class as *Attended*, *Missed*, *Cancelled* (ignored in calculations), or a *Mandatory Bunk* (planned absence).
+- **Admin Dashboard** — Access the administrative panel by logging in as `admin` (password: `god`) when running with a server connection. Monitor active users, inspect daily class markings and events on an all-user calendar, and view detailed metrics in a comparative statistics table.
 - **Live statistics** — Each course card shows your current attendance percentage, a progress bar, and two key metrics:
   - **Can Bunk** — how many more classes you can safely skip and still meet your target.
   - **Must Attend** — how many upcoming classes you cannot miss.
@@ -134,6 +135,7 @@ All endpoints are prefixed with `/api/`.
 | `POST` | `/api/login` | — | Authenticate and receive a session token |
 | `GET` | `/api/state` | Token | Load saved attendance state |
 | `POST` | `/api/state` | Token | Save attendance state |
+| `GET` | `/api/admin/users` | Token (Admin) | Retrieve states and metrics of all registered users |
 
 ### `POST /api/register`
 
@@ -170,6 +172,29 @@ Returns `200` with `{ username, state }`.
 ```
 
 Returns `200` with the saved `{ username, state }`.
+
+### `GET /api/admin/users?token=<token>`
+
+Returns `200` on success with a list of active users, their registration/update timestamps, and saved attendance states:
+
+```json
+{
+  "users": [
+    {
+      "username": "sanika",
+      "createdAt": "2026-06-16T03:20:55.239Z",
+      "updatedAt": "2026-06-16T15:00:58.754Z",
+      "state": {
+        "target": 75,
+        "records": {},
+        "events": []
+      }
+    }
+  ]
+}
+```
+
+Requires an admin token (obtained by logging in as `admin`).
 
 ---
 
@@ -223,7 +248,7 @@ Returns `200` with the saved `{ username, state }`.
 ```
 
 - **`target`** — Attendance percentage goal (75–95).
-- **`records`** — Keyed by `YYYY-MM-DD`. Each day maps class IDs (built from `COURSE-START-END` with whitespace removed) to an object with optional `actual` (`"attended"` | `"missed"`) and `planned` (`"bunk"`) fields.
+- **`records`** — Keyed by `YYYY-MM-DD`. Each day maps class IDs (built from `COURSE-START-END` with whitespace removed) to an object with optional `actual` (`"attended"` | `"missed"` | `"cancelled"`) and `planned` (`"bunk"`) fields.
 - **`events`** — An array of custom event/task objects scheduled by the user. Each event has a unique `id`, `name`, `date` (`YYYY-MM-DD`), `allDay` (boolean), and optional `time` (e.g., `"10:30"`).
 
 ---
@@ -309,6 +334,14 @@ Private repository — all rights reserved.
 ---
 
 ## Changelog
+
+### Cancelled classes & Admin dashboard
+
+- **Cancelled classes (`⊘`)** — Users can mark a scheduled class as cancelled. Cancelled classes are styled with lower opacity, cross-through titles, and a `CANC` badge. They are completely ignored in the attendance percentage calculations (the total classes count is reduced). The calendar displays a neutral grey dot indicator for days containing only cancelled classes.
+- **Admin Dashboard** — Access a comprehensive administrator panel by logging in with the reserved `admin` account (password: `god`).
+  - **Users View**: Lists all active users, their account creation/last-update timestamps, and overall attendance percentages.
+  - **All-User Calendar**: Displays color-coded dots representing active days/changes for different users. Click any day to see detailed user marks and scheduled events.
+  - **Detailed Stats**: View a complete tabular breakdown of all users, their activity timestamps, overall and individual course attendance percentages (AD, ABC, HUM, etc.), and counts of held, attended, missed, cancelled, and bunked classes.
 
 ### UI redesign
 
