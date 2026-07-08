@@ -97,6 +97,7 @@ const els = {
   authMessage: document.querySelector("#authMessage"),
   themeToggle: document.querySelector("#themeToggle"),
   welcome: document.querySelector("#welcome"),
+  maintenance: document.querySelector("#maintenance"),
   tracker: document.querySelector("#tracker"),
   enterApp: document.querySelector("#enterApp"),
   welcomeDate: document.querySelector("#welcomeDate"),
@@ -137,6 +138,19 @@ async function init() {
   applyTheme(localStorage.getItem(themeKey) || "forest");
   bindGlobalEvents();
   updateWelcomePreview();
+
+  if (hasServer) {
+    try {
+      const status = await api("/status");
+      if (status.maintenance) {
+        els.login.classList.add("hidden");
+        els.maintenance.classList.remove("hidden");
+        return;
+      }
+    } catch (err) {
+      // Proceed normally if check fails
+    }
+  }
 
   if (session?.username && session?.token) {
     if (session.username === "admin") {
