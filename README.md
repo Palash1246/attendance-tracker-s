@@ -136,6 +136,9 @@ All endpoints are prefixed with `/api/`.
 | `GET` | `/api/state` | Token | Load saved attendance state |
 | `POST` | `/api/state` | Token | Save attendance state |
 | `GET` | `/api/admin/users` | Token (Admin) | Retrieve states and metrics of all registered users |
+| `GET` | `/api/admin/settings` | Token (Admin) | Retrieve global application settings |
+| `POST` | `/api/admin/settings` | Token (Admin) | Update global application settings |
+| `POST` | `/api/admin/toggle-block` | Token (Admin) | Block or unblock a specific user |
 
 ### `POST /api/register`
 
@@ -195,6 +198,39 @@ Returns `200` on success with a list of active users, their registration/update 
 ```
 
 Requires an admin token (obtained by logging in as `admin`).
+
+### `GET /api/admin/settings?token=<token>`
+
+Returns `200` on success with the global settings:
+
+```json
+{
+  "registrationDisabled": false
+}
+```
+
+### `POST /api/admin/settings`
+
+```json
+{
+  "token": "<admin_token>",
+  "registrationDisabled": true
+}
+```
+
+Returns `200` with `{ success: true, settings }` on success.
+
+### `POST /api/admin/toggle-block`
+
+```json
+{
+  "token": "<admin_token>",
+  "username": "sanika",
+  "blocked": true
+}
+```
+
+Returns `200` with `{ success: true, username: "sanika", blocked: true }` on success. Used to prevent specific users from logging in or making changes.
 
 ---
 
