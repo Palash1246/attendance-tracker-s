@@ -164,6 +164,13 @@ module.exports = async (req, res) => {
   const pathname = new URL(matchedPath, "http://x").pathname;
 
   try {
+    // ── GET /api/status ─────────────────────────────────────────────
+    if (req.method === "GET" && pathname === "/api/status") {
+      return send(res, 200, {
+        maintenance: process.env.MAINTENANCE_MODE === "true" || process.env.MAINTENANCE_MODE === "1"
+      });
+    }
+
     // ── POST /api/register ──────────────────────────────────────────
     if (req.method === "POST" && pathname === "/api/register") {
       const username = cleanUsername(body.username);
