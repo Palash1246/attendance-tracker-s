@@ -114,6 +114,7 @@ const els = {
   markDayBunk: document.querySelector("#markDayBunk"),
   resetData: document.querySelector("#resetData"),
   activeUser: document.querySelector("#activeUser"),
+  bouquetBtn: document.querySelector("#bouquetBtn"),
   logout: document.querySelector("#logout"),
   // week view
   trackerView: document.querySelector("#trackerView"),
@@ -370,6 +371,7 @@ function showWelcome() {
   els.tracker.classList.add("hidden");
   els.welcome.classList.remove("hidden");
   els.activeUser.textContent = session?.username ? `@${session.username}` : "";
+  if (els.bouquetBtn) els.bouquetBtn.style.display = (session?.username === "sanikaaa_jain" || session?.username === "test") ? "inline-block" : "none";
 
   if (session?.username === "admin") {
     els.welcomeDate.textContent = longDate(selectedDate);
@@ -393,6 +395,7 @@ function updateWelcomePreview() {
 function render() {
   els.targetLabel.textContent = `${state.target}%`;
   els.activeUser.textContent = session?.username ? `@${session.username}` : "";
+  if (els.bouquetBtn) els.bouquetBtn.style.display = (session?.username === "sanikaaa_jain" || session?.username === "test") ? "inline-block" : "none";
   els.dayTitle.textContent = `Current day: ${longDate(getInitialDate())}`;
   renderSummary();
   renderCalendar();
