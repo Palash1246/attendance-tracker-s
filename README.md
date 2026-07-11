@@ -20,6 +20,8 @@ A personal attendance tracker for **Academy of Architecture · Semester V** stud
 - **Event & task planner** — Schedule custom events/tasks for any date using the floating action button (`+`). Events are saved in your state and show up under your day's schedule.
 - **Weekly schedule view** — View the full week's timetable in a dedicated tab with holiday warnings and click-to-navigate daily shortcuts.
 - **Responsive layout** — Works on desktops, tablets, and phones.
+- **Digital Bouquet** — A special digital bouquet button appears in the topbar exclusively for `@sanikaaa_jain` and `@test`.
+  - **[BOUQUET_LINK_LOCATION]**: To update the link, search for `[BOUQUET_LINK_LOCATION]` in `public/index.html` (around line 155) and change the `href` attribute.
 
 ---
 
