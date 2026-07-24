@@ -1,0 +1,215 @@
+body {
+  background: #121213;
+  color: white;
+  font-family: sans-serif;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding-top: 20px;
+  box-sizing: border-box;
+}
+
+.game {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+  letter-spacing: 0.15em;
+  border-bottom: 2px solid #3a3a3c;
+  padding-bottom: 12px;
+}
+
+/* Board */
+.board {
+  display: grid;
+  grid-template-rows: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 0 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+/* Tiles */
+.tile {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #3a3a3c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: #121213;
+  color: white;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.tile.correct {
+  background: #538d4e;
+  border-color: #538d4e;
+}
+
+.tile.present {
+  background: #b59f3b;
+  border-color: #b59f3b;
+}
+
+.tile.absent {
+  background: #3a3a3c;
+  border-color: #3a3a3c;
+}
+
+/* Keyboard */
+.keyboard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.key-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+button {
+  background: #818384;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px 10px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+  min-width: 36px;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background: #9a9b9c;
+}
+
+button:active {
+  background: #565758;
+}
+
+/* Key states — colored after guessing */
+button.correct {
+  background: #538d4e;
+}
+
+button.present {
+  background: #b59f3b;
+}
+
+button.absent {
+  background: #3a3a3c;
+}
+
+/* End game overlay */
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -45%) scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.end-screen {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a1b;
+  padding: 30px 40px;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid #3a3a3c;
+  z-index: 999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.end-screen p {
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+}
+
+.answer-reveal {
+  display: inline-block;
+  margin: 12px 0;
+  padding: 8px 18px;
+  background-color: #538d4e;
+  color: white;
+  font-size: 1.6rem;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  border-radius: 6px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.end-screen button {
+  margin-top: 15px;
+  padding: 12px 24px;
+  font-size: 1.1rem;
+}
+
+/* Error message */
+.error-message {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+/* Shake Animation for invalid word */
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-6px); }
+  40%, 60% { transform: translateX(6px); }
+}
+
+.row.shake {
+  animation: shake 0.6s ease;
+}
+
+/* Flip Animation for committed tiles */
+@keyframes flipTile {
+  0% {
+    transform: rotateX(0deg);
+  }
+  50% {
+    transform: rotateX(90deg);
+  }
+  100% {
+    transform: rotateX(0deg);
+  }
+}
+
+.tile.revealed {
+  animation: flipTile 0.5s ease forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+.come-back-msg {
+  font-size: 0.9rem;
+  color: #818384;
+  margin-top: 12px;
+}
