@@ -157,6 +157,26 @@ function cleanUsername(value) {
 
 function send(res, status, body) { res.status(status).json(body); }
 
+// ── Wordle word list (bundled, no DB needed) ────────────────────────
+let _wordList = null;
+function getWordList() {
+  if (!_wordList) {
+    const p = require("path").join(__dirname, "words.json");
+    _wordList = JSON.parse(require("fs").readFileSync(p, "utf8"));
+  }
+  return _wordList;
+}
+
+function getWordleDayIndex() {
+  const epoch = new Date("2024-01-01T00:00:00Z").getTime();
+  return Math.floor((Date.now() - epoch) / 86_400_000);
+}
+
+function getTodayWord() {
+  const list = getWordList();
+  return list[getWordleDayIndex() % list.length].toLowerCase();
+}
+
 // ── Main handler ──────────────────────────────────────────────────────
 module.exports = async (req, res) => {
   const body     = req.body || {};
@@ -168,6 +188,89 @@ module.exports = async (req, res) => {
     if (req.method === "GET" && pathname === "/api/status") {
       return send(res, 200, {
         maintenance: process.env.MAINTENANCE_MODE === "true" || process.env.MAINTENANCE_MODE === "1"
+      });
+    }
+
+    // ── GET /api/wordle/word ─────────────────────────────────────────────
+    if (req.method === "GET" && pathname === "/api/wordle/word") {
+      const qs       = new URL(matchedPath, "http://x").searchParams;
+      const username = cleanUsername(qs.get("username"));
+      const payload  = verifyToken(qs.get("token"));
+      if (!payload || payload.sub !== username)
+        return send(res, 401, { error: "Please log in again." });
+
+      const today  = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const user   = await kvGet(`user:${username}`);
+      if (!user) return send(res, 404, { error: "User not found." });
+
+      const ws = user.wordleState;
+      const alreadyPlayedToday = ws && ws.date === today;
+
+      return send(res, 200, {
+        length: 5,
+        dayIndex: getWordleDayIndex(),
+        date: today,
+        savedState: alreadyPlayedToday ? ws : null,
+      });
+    }
+
+    // ── POST /api/wordle/check ───────────────────────────────────────────
+    if (req.method === "POST" && pathname === "/api/wordle/check") {
+      const username    = cleanUsername(body.username);
+      const payload     = verifyToken(body.token);
+      if (!payload || payload.sub !== username)
+        return send(res, 401, { error: "Please log in again." });
+
+      const guess = typeof body.guess === "string"
+        ? body.guess.trim().toLowerCase()
+        : "";
+      if (!/^[a-z]{5}$/.test(guess))
+        return send(res, 400, { error: "Guess must be exactly 5 letters." });
+
+      const wordList = getWordList();
+      if (!wordList.includes(guess))
+        return send(res, 400, { error: "Not a valid word." });
+
+      const currentWord = getTodayWord().split("");
+      const result      = Array(5).fill("absent");
+      const pool        = [...currentWord];
+
+      for (let i = 0; i < 5; i++) {
+        if (guess[i] === pool[i]) { result[i] = "correct"; pool[i] = null; }
+      }
+      for (let i = 0; i < 5; i++) {
+        if (result[i] === "correct") continue;
+        const idx = pool.indexOf(guess[i]);
+        if (idx !== -1) { result[i] = "present"; pool[idx] = null; }
+      }
+
+      const isWin        = result.every(r => r === "correct");
+      const attemptCount = Number(body.attemptCount) || 1;
+      const isLoss       = !isWin && attemptCount >= 6;
+
+      const user = await kvGet(`user:${username}`);
+      if (!user) return send(res, 404, { error: "User not found." });
+
+      const today = new Date().toISOString().slice(0, 10);
+      let ws = (user.wordleState && user.wordleState.date === today)
+        ? user.wordleState
+        : { date: today, guesses: [], gameOver: false };
+
+      ws.guesses.push({ guess, result });
+      if (isWin || isLoss) {
+        ws.gameOver = true;
+        ws.won      = isWin;
+        ws.answer   = isWin ? "" : getTodayWord();
+      }
+
+      user.wordleState = ws;
+      user.updatedAt   = new Date().toISOString();
+      await kvSet(`user:${username}`, user);
+
+      return send(res, 200, {
+        result,
+        isWin,
+        ...(isLoss ? { answer: getTodayWord() } : {}),
       });
     }
 

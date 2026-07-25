@@ -741,7 +741,16 @@ function switchTab(panelId) {
   });
   els.trackerView.classList.toggle("hidden", panelId !== "trackerView");
   els.weeklyPanel.classList.toggle("hidden", panelId !== "weeklyPanel");
+  const wordleView = document.querySelector("#wordleView");
+  if (wordleView) wordleView.classList.toggle("hidden", panelId !== "wordleView");
+
   if (panelId === "weeklyPanel") renderWeekly();
+
+  if (panelId === "wordleView") {
+    if (window.WordleModule) window.WordleModule.init();
+  } else {
+    if (window.WordleModule) window.WordleModule.detach();
+  }
 }
 
 // ─────────────────────────────────── WEEKLY SCHEDULE VIEW
@@ -1341,3 +1350,364 @@ function renderAdminStats() {
     })
     .join("");
 }
+
+// ════════════════════════════════════════════════════════════════════
+// WORDLE MODULE
+// Self-contained — reads App-level globals: session (username, token)
+// ════════════════════════════════════════════════════════════════════
+(function WordleModule() {
+  const MAX_GUESSES  = 6;
+  const WORD_LENGTH  = 5;
+
+  const KEYBOARD_ROWS = [
+    ["Q","W","E","R","T","Y","U","I","O","P"],
+    ["A","S","D","F","G","H","J","K","L"],
+    ["Enter","Z","X","C","V","B","N","M","⌫"],
+  ];
+
+  const WIN_MESSAGES = [
+    "Genius! 🎉", "Magnificent! 🌟", "Impressive! 👏",
+    "Splendid! ✨",  "Great! 😊",      "Phew! 😅",
+  ];
+
+  let wState = null;   // { guesses[], current, gameOver, message, answer, loading }
+  let shakeRow = null;
+
+  // ── Initialise when the Wordle tab is opened ────────────────────
+  async function initWordle() {
+    wState = {
+      guesses:  [],
+      current:  "",
+      gameOver: false,
+      message:  "",
+      answer:   "",
+      loading:  true,
+    };
+    renderAll();
+    await loadWordleState();
+  }
+
+  // ── Load today's state from the server ──────────────────────────
+  async function loadWordleState() {
+    try {
+      const currentUser  = session?.username;
+      const currentToken = session?.token;
+      const params = new URLSearchParams({
+        username: currentUser,
+        token:    currentToken,
+      });
+      const res  = await fetch(`/api/wordle/word?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load wordle.");
+
+      const today  = new Date().toISOString().slice(0, 10);
+      const dateEl = document.getElementById("wordleDate");
+      if (dateEl) {
+        dateEl.textContent = `Wordle #${data.dayIndex}  ·  ${today}`;
+      }
+
+      if (data.savedState) {
+        // Restore a game in progress or already completed
+        const s = data.savedState;
+        wState.guesses  = s.guesses || [];
+        wState.gameOver = s.gameOver || false;
+        if (s.gameOver) {
+          wState.message = s.won
+            ? (WIN_MESSAGES[s.guesses.length - 1] || "Well done!")
+            : "Better luck tomorrow!";
+          wState.answer = s.answer || "";
+        }
+      }
+      wState.loading = false;
+      renderAll();
+      if (!wState.gameOver) attachKeyListeners();
+    } catch (err) {
+      wState.loading = false;
+      setError(err.message);
+      renderAll();
+    }
+  }
+
+  // ── Input handlers ───────────────────────────────────────────────
+  function handleAdd(key) {
+    if (wState.gameOver || wState.current.length >= WORD_LENGTH) return;
+    wState.current += key.toLowerCase();
+    setError("");
+    // BUG FIX 1: Only patch the active row instead of rebuilding the whole board
+    renderActiveRow();
+  }
+
+  function handleDelete() {
+    if (wState.gameOver || !wState.current.length) return;
+    wState.current = wState.current.slice(0, -1);
+    // BUG FIX 1: Only patch the active row instead of rebuilding the whole board
+    renderActiveRow();
+  }
+
+  async function handleSubmit() {
+    if (wState.gameOver) return;
+    if (wState.current.length !== WORD_LENGTH) {
+      setError("Not enough letters");
+      triggerShake(wState.guesses.length);
+      return;
+    }
+    if (wState.guesses.some(g => g.guess === wState.current)) {
+      setError("Already tried that word!");
+      triggerShake(wState.guesses.length);
+      return;
+    }
+
+    setError("");
+    const guess        = wState.current;
+    const attemptCount = wState.guesses.length + 1;
+    const currentUser  = session?.username;
+    const currentToken = session?.token;
+
+    try {
+      const res  = await fetch("/api/wordle/check", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: currentUser,
+          token:    currentToken,
+          guess,
+          attemptCount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // BUG FIX 3: Do NOT clear wState.current on error so the user can
+        // correct their spelling. Just shake and show the error message.
+        setError(data.error || "Server error.");
+        triggerShake(wState.guesses.length);
+        return;
+      }
+
+      // Commit the guess — clear current word and add to guesses list
+      const rowIndex   = wState.guesses.length;  // which board row we just committed
+      const newGuesses = [...wState.guesses, { guess, result: data.result }];
+      wState.guesses   = newGuesses;
+      wState.current   = "";
+      // BUG FIX 1 & 2: Reveal the committed row with the flip animation.
+      // We paint letters immediately (no colour yet) then apply colour classes
+      // after each tile's flip completes, so the colour is hidden during the flip.
+      revealCommittedRow(rowIndex, data.result);
+      renderKeyboard();     // update keyboard key colours after each guess
+      renderActiveRow();    // clear the active input row
+
+      if (data.isWin) {
+        setTimeout(() => {
+          wState.gameOver = true;
+          wState.message  = WIN_MESSAGES[newGuesses.length - 1] || "Great!";
+          detachKeyListeners();
+          // Don't rebuild the board — just update keyboard colours + show end screen
+          renderKeyboard();
+          renderEndScreen();
+        }, WORD_LENGTH * 300 + 500);
+      } else if (newGuesses.length >= MAX_GUESSES) {
+        setTimeout(() => {
+          wState.gameOver = true;
+          wState.message  = "Better luck tomorrow!";
+          wState.answer   = data.answer || "";
+          detachKeyListeners();
+          // Don't rebuild the board — just update keyboard colours + show end screen
+          renderKeyboard();
+          renderEndScreen();
+        }, WORD_LENGTH * 300 + 500);
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    }
+  }
+
+  // ── Rendering ────────────────────────────────────────────────────
+  // renderAll: full rebuild — called on init/restore only.
+  function renderAll() {
+    buildBoardDOM();
+    renderKeyboard();
+    renderEndScreen();
+  }
+
+  // Build the entire 6-row board from scratch.
+  // Committed rows from wState.guesses are stamped with their final colours
+  // immediately (this is the restore path — no animation needed).
+  // The active row and empty rows get blank tiles.
+  function buildBoardDOM() {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    board.innerHTML = "";
+
+    for (let i = 0; i < MAX_GUESSES; i++) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "wordle-row";
+      rowEl.dataset.row = i;
+
+      const committed = wState.guesses[i];
+
+      for (let j = 0; j < WORD_LENGTH; j++) {
+        const tile = document.createElement("div");
+        tile.className = "wordle-tile";
+        tile.dataset.col = j;
+
+        if (committed) {
+          // Restored state — show final colour straight away, no animation
+          tile.textContent = committed.guess[j].toUpperCase();
+          tile.classList.add(committed.result[j]);  // correct/present/absent
+          tile.classList.add("restored");           // prevents re-animation
+        } else if (i === wState.guesses.length && !wState.gameOver) {
+          // Active row — fill from wState.current
+          tile.textContent = (wState.current[j] || "").toUpperCase();
+        }
+        rowEl.appendChild(tile);
+      }
+      board.appendChild(rowEl);
+    }
+  }
+
+  // Update only the active input row in place — called on every add/delete.
+  // BUG FIX 1: committed rows are never touched here, so they can't re-animate.
+  function renderActiveRow() {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    const activeIndex = wState.guesses.length;
+    const rowEl = board.querySelector(`[data-row="${activeIndex}"]`);
+    if (!rowEl) return;
+    for (let j = 0; j < WORD_LENGTH; j++) {
+      const tile = rowEl.children[j];
+      if (tile) tile.textContent = (wState.current[j] || "").toUpperCase();
+    }
+  }
+
+  // Apply the flip animation + colours to a newly committed row.
+  // BUG FIX 2: colour classes are added AFTER the flip delay so the
+  // tile face-down phase hides the colour, then reveals it on flip-back.
+  function revealCommittedRow(rowIndex, result) {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    const rowEl = board.querySelector(`[data-row="${rowIndex}"]`);
+    if (!rowEl) return;
+
+    for (let j = 0; j < WORD_LENGTH; j++) {
+      const tile  = rowEl.children[j];
+      const delay = j * 300;  // stagger each tile by 300 ms
+      if (!tile) continue;
+
+      // Start the flip
+      tile.style.setProperty("--delay", `${delay}ms`);
+      tile.classList.add("revealed");
+
+      // Apply the colour class exactly when the tile reaches face-up
+      // (halfway through the 500 ms flip = 250 ms after it starts)
+      setTimeout(() => {
+        tile.classList.add(result[j]);  // correct / present / absent
+      }, delay + 250);
+    }
+  }
+
+  function renderKeyboard() {
+    const kb = document.getElementById("wordleKeyboard");
+    if (!kb) return;
+    kb.innerHTML = "";
+
+    const keyStates = buildKeyStates(wState.guesses);
+    KEYBOARD_ROWS.forEach(row => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "wordle-key-row";
+      row.forEach(key => {
+        const btn = document.createElement("button");
+        btn.className = `wordle-key ${keyStates[key] || ""}`;
+        btn.textContent = key;
+        btn.dataset.key = key;
+        btn.addEventListener("click", () => onKeyClick(key));
+        rowEl.appendChild(btn);
+      });
+      kb.appendChild(rowEl);
+    });
+  }
+
+  function renderEndScreen() {
+    const end     = document.getElementById("wordleEndScreen");
+    const msgEl   = document.getElementById("wordleEndMessage");
+    const revealEl = document.getElementById("wordleAnswerReveal");
+    if (!end) return;
+
+    if (wState.gameOver) {
+      end.classList.remove("hidden");
+      msgEl.textContent = wState.message;
+      if (wState.answer) {
+        revealEl.textContent = wState.answer.toUpperCase();
+        revealEl.classList.remove("hidden");
+      } else {
+        revealEl.classList.add("hidden");
+      }
+    } else {
+      end.classList.add("hidden");
+    }
+  }
+
+  // ── Key state builder (mirrors wordle utils/helpers.js) ──────────
+  function buildKeyStates(guesses) {
+    const priority = { correct: 3, present: 2, absent: 1 };
+    const states   = {};
+    for (const { guess, result } of guesses) {
+      for (let i = 0; i < guess.length; i++) {
+        const letter = guess[i].toUpperCase();
+        const status = result[i];
+        if (!states[letter] || priority[status] > priority[states[letter]])
+          states[letter] = status;
+      }
+    }
+    return states;
+  }
+
+  // ── Shake animation ──────────────────────────────────────────────
+  // BUG FIX 3: Shake only manipulates the row's class — it does not
+  // rebuild the board, so wState.current is preserved during the shake.
+  function triggerShake(rowIndex) {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    const rowEl = board.querySelector(`[data-row="${rowIndex}"]`);
+    if (!rowEl) return;
+    rowEl.classList.add("shake");
+    setTimeout(() => rowEl.classList.remove("shake"), 600);
+  }
+
+  // ── Error helper ─────────────────────────────────────────────────
+  function setError(msg) {
+    const el = document.getElementById("wordleError");
+    if (el) el.textContent = msg;
+  }
+
+  // ── Keyboard event listeners ─────────────────────────────────────
+  let keyListenersAttached = false;
+
+  function onKeyDown(e) {
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key.toUpperCase();
+    if (key === "ENTER")     handleSubmit();
+    else if (key === "BACKSPACE") handleDelete();
+    else if (/^[A-Z]$/.test(key)) handleAdd(key);
+  }
+
+  function onKeyClick(key) {
+    if      (key === "Enter") handleSubmit();
+    else if (key === "⌫")    handleDelete();
+    else                      handleAdd(key);
+  }
+
+  function attachKeyListeners()  {
+    if (keyListenersAttached) return;
+    window.addEventListener("keydown", onKeyDown);
+    keyListenersAttached = true;
+  }
+
+  function detachKeyListeners()  {
+    if (!keyListenersAttached) return;
+    window.removeEventListener("keydown", onKeyDown);
+    keyListenersAttached = false;
+  }
+
+  // ── Public API — called by the tab-switching code in app.js ──────
+  window.WordleModule = { init: initWordle, detach: detachKeyListeners };
+})();
