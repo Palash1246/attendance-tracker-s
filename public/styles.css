@@ -47,6 +47,12 @@ body[data-theme="forest"] {
   --course-ALD:  #6BAA8A;   /* Landscaping & Allied Design       → sage      */
   --course-TDS:  #7E9EBF;   /* Theory & Design of Structures     → steel     */
   --course-CF:   #C97B6E;   /* College Projects                  → rose      */
+
+  /* ── Wordle theme palette ── */
+  --wordle-correct:      #50FF47;
+  --wordle-correct-text: #121213;
+  --wordle-present:      #EDFF47;
+  --wordle-present-text: #121213;
 }
 
 /* ─── ROSE THEME ───────────────────────────────────────────── */
@@ -92,6 +98,12 @@ body[data-theme="rose"] {
   --course-ALD:  #7AAF98;   /* Landscaping & Allied Design */
   --course-TDS:  #9CB8C8;   /* Theory & Design of Structures */
   --course-CF:   #C97B6E;
+
+  /* ── Wordle theme palette ── */
+  --wordle-correct:      #FF476F;
+  --wordle-correct-text: #ffffff;
+  --wordle-present:      #47FFA0;
+  --wordle-present-text: #121213;
 }
 
 /* ═══════════════════════════════════════════ RESET */
@@ -1713,8 +1725,8 @@ input[type="range"] {
   transition: border-color 0.1s;
 }
 
-.wordle-tile.correct { background: #538d4e; border-color: #538d4e; color: #fff; }
-.wordle-tile.present { background: #b59f3b; border-color: #b59f3b; color: #fff; }
+.wordle-tile.correct { background: var(--wordle-correct); border-color: var(--wordle-correct); color: var(--wordle-correct-text); }
+.wordle-tile.present { background: var(--wordle-present); border-color: var(--wordle-present); color: var(--wordle-present-text); }
 .wordle-tile.absent  { background: #3a3a3c; border-color: #3a3a3c; color: #fff; }
 
 /* Flip reveal animation */
@@ -1767,8 +1779,8 @@ input[type="range"] {
   max-width: 43px;
   transition: background 0.15s, opacity 0.15s;
 }
-.wordle-key.correct { background: #538d4e; color: #fff; }
-.wordle-key.present { background: #b59f3b; color: #fff; }
+.wordle-key.correct { background: var(--wordle-correct); color: var(--wordle-correct-text); }
+.wordle-key.present { background: var(--wordle-present); color: var(--wordle-present-text); }
 .wordle-key.absent  { background: #3a3a3c; color: #fff; }
 .wordle-key:hover   { opacity: 0.85; }
 
@@ -1794,8 +1806,8 @@ input[type="range"] {
   display: inline-block;
   margin: 0.75rem 0;
   padding: 6px 18px;
-  background: #538d4e;
-  color: #fff;
+  background: var(--wordle-correct);
+  color: var(--wordle-correct-text);
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: 0.15em;
