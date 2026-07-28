@@ -260,6 +260,24 @@
               <p class="wordle-comeback">Come back tomorrow for a new word! 📅</p>
             </div>
 
+            <!-- Streak badge (always visible while on Wordle tab) -->
+            <div id="wordleStreakBar" class="wordle-streak-bar hidden">
+              <span class="streak-fire">🔥</span>
+              <span id="wordleStreakCount" class="streak-count">0</span>
+              <span class="streak-label">day streak</span>
+              <span class="streak-sep">·</span>
+              <span class="streak-label">Best:</span>
+              <span id="wordleStreakBest" class="streak-best">0</span>
+            </div>
+
+            <!-- Leaderboard (always visible, refreshes when tab opens) -->
+            <div id="wordleLeaderboard" class="wordle-leaderboard">
+              <p class="eyebrow">Today's leaderboard</p>
+              <div id="wordleLeaderboardList" class="wordle-lb-list">
+                <span class="wordle-lb-loading">Loading…</span>
+              </div>
+            </div>
+
           </div>
 
         </main>

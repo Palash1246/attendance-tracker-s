@@ -215,12 +215,14 @@ module.exports = async (req, res) => {
 
       const ws = user.wordleState;
       const alreadyPlayedToday = ws && ws.date === today;
+      const streak = user.wordleStreak || { current: 0, best: 0, lastWonDate: null };
 
       return send(res, 200, {
         length: 5,
         dayIndex: getWordleDayIndex(),
         date: today,
         savedState: alreadyPlayedToday ? ws : null,
+        streak,
       });
     }
 
@@ -271,6 +273,30 @@ module.exports = async (req, res) => {
         ws.gameOver = true;
         ws.won      = isWin;
         ws.answer   = isWin ? "" : getTodayWord();
+
+        // ── Streak update ────────────────────────────────────────
+        const yesterday = new Date();
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+        const streak = user.wordleStreak || { current: 0, best: 0, lastWonDate: null };
+
+        if (isWin) {
+          if (streak.lastWonDate === yesterdayStr) {
+            streak.current += 1;              // continued streak
+          } else if (streak.lastWonDate === today) {
+            // already counted today, no change
+          } else {
+            streak.current = 1;               // new streak starts
+          }
+          streak.lastWonDate = today;
+          streak.best = Math.max(streak.best, streak.current);
+        } else {
+          // loss — reset current streak
+          streak.current = 0;
+        }
+        user.wordleStreak = streak;
+        // ─────────────────────────────────────────────────────────
       }
 
       user.wordleState = ws;
@@ -463,6 +489,60 @@ module.exports = async (req, res) => {
       await kvSet(`user:${targetUsername}`, user);
 
       return send(res, 200, { success: true, username: targetUsername, blocked: user.blocked });
+    }
+
+    // ── GET /api/wordle/leaderboard ────────────────────────────────────
+    if (req.method === "GET" && pathname === "/api/wordle/leaderboard") {
+      const qs       = new URL(matchedPath, "http://x").searchParams;
+      const username = cleanUsername(qs.get("username"));
+      const payload  = verifyToken(qs.get("token"));
+      if (!payload || payload.sub !== username)
+        return send(res, 401, { error: "Please log in again." });
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Get all user keys
+      let userKeys = [];
+      if (!KV_URL || !KV_TOKEN) {
+        const db = getLocalDb();
+        userKeys = Object.keys(db.users).map(name => `user:${name}`);
+      } else {
+        const r = await fetch(`${KV_URL}/keys/user:*`, {
+          headers: { Authorization: `Bearer ${KV_TOKEN}` },
+        });
+        if (!r.ok) throw new Error(`KV keys read failed (${r.status})`);
+        const data = await r.json();
+        userKeys = Array.isArray(data.result) ? data.result : [];
+      }
+
+      const entries = [];
+      for (const key of userKeys) {
+        const uname = key.slice(5);
+        if (uname === "admin") continue;
+        const u = await kvGet(key);
+        if (!u) continue;
+        const ws = u.wordleState;
+        const streak = u.wordleStreak || { current: 0, best: 0 };
+        if (ws && ws.date === today && ws.gameOver) {
+          entries.push({
+            username: uname,
+            won:      ws.won || false,
+            guesses:  ws.won ? ws.guesses.length : null,  // null = lost
+            streak:   streak.current,
+            best:     streak.best,
+          });
+        }
+      }
+
+      // Sort: winners first (by fewest guesses), then non-winners
+      entries.sort((a, b) => {
+        if (a.won && b.won)  return a.guesses - b.guesses;
+        if (a.won)           return -1;
+        if (b.won)           return 1;
+        return 0;
+      });
+
+      return send(res, 200, { date: today, dayIndex: getWordleDayIndex(), entries });
     }
 
     return send(res, 404, { error: "Not found." });

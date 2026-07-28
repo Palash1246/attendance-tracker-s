@@ -514,41 +514,130 @@ function renderDay() {
   if (!classes.length) {
     els.scheduleList.innerHTML = `<div class="empty-state">No regular classes for this day.</div>`;
   } else {
-    els.scheduleList.innerHTML = classes
-      .map((item) => {
-        const id = classId(item);
-        const actual = getStatus(selectedDate, item, "actual");
-        const planned = getStatus(selectedDate, item, "planned");
-        const course = courses[item.course];
-        const isCancelled = actual === "cancelled";
-        return `
-          <article class="class-item${isCancelled ? " cancelled" : ""}" data-course="${item.course}">
-            <div class="class-time">${item.start}<br />${item.end}</div>
-            <div class="class-main">
-              <strong>${course.name}</strong>
-              <span>${item.type}${isCancelled ? ` <span class="cancelled-badge">CANC</span>` : ""}</span>
-            </div>
-            <div class="class-actions" data-date="${key}" data-id="${id}">
-              <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
-              <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
-              <button class="status-button cancelled-btn ${isCancelled ? "active" : ""}" data-field="actual" data-value="cancelled" title="Cancelled">⊘</button>
-              <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk" ${isCancelled ? "disabled" : ""}>B</button>
-            </div>
-          </article>
-        `;
-      })
-      .join("");
+    els.scheduleList.innerHTML = "";
+    classes.forEach((item) => {
+      const id          = classId(item);
+      const actual      = getStatus(selectedDate, item, "actual");
+      const planned     = getStatus(selectedDate, item, "planned");
+      const course      = courses[item.course];
+      const isCancelled = actual === "cancelled";
+      const replacedBy  = isCancelled
+        ? (state.records[key]?.[id]?.replacedBy || null)
+        : null;
 
-    els.scheduleList.querySelectorAll(".status-button").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const parent = button.closest(".class-actions");
-        const date = parseDate(parent.dataset.date);
-        const item = classes.find((entry) => classId(entry) === parent.dataset.id);
-        const current = getStatus(date, item, button.dataset.field);
-        setStatus(date, item, button.dataset.field, current === button.dataset.value ? null : button.dataset.value);
-        await saveState();
-        render();
+      const article = document.createElement("article");
+      article.className = `class-item${isCancelled ? " cancelled" : ""}`;
+      article.dataset.course = item.course;
+
+      article.innerHTML = `
+        <div class="class-time">${item.start}<br />${item.end}</div>
+        <div class="class-main">
+          <strong></strong>
+          <span class="class-type-row"></span>
+        </div>
+        <div class="class-actions" data-date="${key}" data-id="${id}">
+          <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
+          <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
+          <button class="status-button cancelled-btn ${isCancelled ? "active" : ""}" title="Cancelled">⊘</button>
+          <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk" ${isCancelled ? "disabled" : ""}>B</button>
+        </div>
+        <div class="replacement-picker hidden" data-date="${key}" data-id="${id}">
+          <span class="replacement-label">Replaced by:</span>
+          ${Object.keys(courses).map(c =>
+            `<button class="repl-btn${replacedBy === c ? " active" : ""}" data-course="${c}">${c}</button>`
+          ).join("")}
+          <button class="repl-btn repl-none${!replacedBy ? " active" : ""}">None</button>
+        </div>
+      `;
+
+      // Fill text content safely (XSS-safe)
+      article.querySelector("strong").textContent = course.name;
+      const typeSpan = article.querySelector(".class-type-row");
+      typeSpan.textContent = item.type;
+      if (isCancelled) {
+        const cancBadge = document.createElement("span");
+        cancBadge.className = "cancelled-badge";
+        cancBadge.textContent = "CANC";
+        typeSpan.appendChild(cancBadge);
+        if (replacedBy) {
+          const replBadge = document.createElement("span");
+          replBadge.className = "replaced-badge";
+          replBadge.textContent = `→ ${replacedBy}`;
+          typeSpan.appendChild(replBadge);
+        }
+      }
+
+      const actionsDiv = article.querySelector(".class-actions");
+      const pickerDiv  = article.querySelector(".replacement-picker");
+
+      // A / M / B buttons — standard behaviour
+      actionsDiv.querySelectorAll("[data-field]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const date    = parseDate(actionsDiv.dataset.date);
+          const itm     = classes.find((e) => classId(e) === actionsDiv.dataset.id);
+          const current = getStatus(date, itm, btn.dataset.field);
+          setStatus(date, itm, btn.dataset.field, current === btn.dataset.value ? null : btn.dataset.value);
+          // If un-cancelling, also clear any replacedBy
+          if (btn.dataset.field === "actual" && btn.dataset.value === "attended") {
+            const dk = toKey(date);
+            const eid = classId(itm);
+            if (state.records[dk]?.[eid]) delete state.records[dk][eid].replacedBy;
+          }
+          await saveState();
+          render();
+        });
       });
+
+      // ⊘ cancel button — toggle picker instead of directly setting
+      const cancelBtn = actionsDiv.querySelector(".cancelled-btn");
+      cancelBtn.addEventListener("click", async () => {
+        const date  = parseDate(actionsDiv.dataset.date);
+        const itm   = classes.find((e) => classId(e) === actionsDiv.dataset.id);
+        const cur   = getStatus(date, itm, "actual");
+
+        if (cur === "cancelled") {
+          // Un-cancel: clear cancelled and replacedBy
+          setStatus(date, itm, "actual", null);
+          const dk  = toKey(date);
+          const eid = classId(itm);
+          if (state.records[dk]?.[eid]) delete state.records[dk][eid].replacedBy;
+          await saveState();
+          render();
+        } else {
+          // Show the replacement picker
+          pickerDiv.classList.toggle("hidden");
+        }
+      });
+
+      // Replacement picker buttons
+      pickerDiv.querySelectorAll(".repl-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const date  = parseDate(pickerDiv.dataset.date);
+          const itm   = classes.find((e) => classId(e) === pickerDiv.dataset.id);
+          const dk    = toKey(date);
+          const eid   = classId(itm);
+
+          // Mark as cancelled
+          setStatus(date, itm, "actual", "cancelled");
+          setStatus(date, itm, "planned", null);
+
+          // Store replacedBy (or clear it for "None")
+          if (!state.records[dk]) state.records[dk] = {};
+          if (!state.records[dk][eid]) state.records[dk][eid] = {};
+
+          const chosen = btn.dataset.course || null;
+          if (chosen) {
+            state.records[dk][eid].replacedBy = chosen;
+          } else {
+            delete state.records[dk][eid].replacedBy;
+          }
+
+          await saveState();
+          render();
+        });
+      });
+
+      els.scheduleList.appendChild(article);
     });
   }
 
@@ -603,12 +692,13 @@ function calculateCourse(courseId, target) {
   const end = parseDate(semester.end);
 
   for (let date = parseDate(semester.start); date <= end; date = addDays(date, 1)) {
+    // ── Count scheduled classes for this course ──────────────────
     const classes = getClassesForDate(date).filter((item) => item.course === courseId);
     classes.forEach((item) => {
-      const actual = getStatus(date, item, "actual");
+      const actual  = getStatus(date, item, "actual");
       const planned = getStatus(date, item, "planned");
       if (actual === "cancelled") {
-        return;
+        return;  // cancelled — doesn't count for original course
       }
       if (actual) {
         total += 1;
@@ -618,6 +708,20 @@ function calculateCourse(courseId, target) {
         if (planned === "bunk") plannedBunks += 1;
       }
     });
+
+    // ── Count replacement classes held in OTHER courses' slots ───
+    // Walk every record for this date; if any OTHER course's slot
+    // was cancelled and replacedBy === courseId, that's an extra
+    // attended class for courseId (already in the past).
+    if (date < today) {
+      const dateRecords = state.records[toKey(date)] || {};
+      Object.values(dateRecords).forEach((rec) => {
+        if (rec.actual === "cancelled" && rec.replacedBy === courseId) {
+          total   += 1;
+          attended += 1;
+        }
+      });
+    }
   }
 
   const projectedTotal = total + upcoming;
@@ -966,7 +1070,7 @@ function calculateCourseForState(userState, courseId, target) {
   for (let date = parseDate(semester.start); date <= end; date = addDays(date, 1)) {
     const classes = getClassesForDate(date).filter((item) => item.course === courseId);
     classes.forEach((item) => {
-      const records = userState.records[toKey(date)] || {};
+      const records = (userState.records && userState.records[toKey(date)]) || {};
       const rec = records[classId(item)] || {};
       const actual = rec.actual || null;
       const planned = rec.planned || null;
@@ -981,6 +1085,17 @@ function calculateCourseForState(userState, courseId, target) {
         if (planned === "bunk") plannedBunks += 1;
       }
     });
+
+    // Count replacement classes for admin stats too
+    if (date < today) {
+      const dateRecords = (userState.records && userState.records[toKey(date)]) || {};
+      Object.values(dateRecords).forEach((rec) => {
+        if (rec.actual === "cancelled" && rec.replacedBy === courseId) {
+          total    += 1;
+          attended += 1;
+        }
+      });
+    }
   }
 
   const projectedTotal = total + upcoming;
@@ -1425,6 +1540,16 @@ function renderAdminStats() {
         dateEl.textContent = `Wordle #${data.dayIndex}  ·  ${today}`;
       }
 
+      // Show streak bar
+      if (data.streak) {
+        const bar = document.getElementById("wordleStreakBar");
+        if (bar) {
+          document.getElementById("wordleStreakCount").textContent = data.streak.current;
+          document.getElementById("wordleStreakBest").textContent  = data.streak.best;
+          bar.classList.remove("hidden");
+        }
+      }
+
       if (data.savedState) {
         // Restore a game in progress or already completed
         const s = data.savedState;
@@ -1440,6 +1565,7 @@ function renderAdminStats() {
       wState.loading = false;
       renderAll();
       if (!wState.gameOver) attachKeyListeners();
+      loadLeaderboard();
     } catch (err) {
       wState.loading = false;
       setError(err.message);
@@ -1522,6 +1648,7 @@ function renderAdminStats() {
           // Don't rebuild the board — just update keyboard colours + show end screen
           renderKeyboard();
           renderEndScreen();
+          loadLeaderboard();
         }, WORD_LENGTH * 300 + 500);
       } else if (newGuesses.length >= MAX_GUESSES) {
         setTimeout(() => {
@@ -1532,6 +1659,7 @@ function renderAdminStats() {
           // Don't rebuild the board — just update keyboard colours + show end screen
           renderKeyboard();
           renderEndScreen();
+          loadLeaderboard();
         }, WORD_LENGTH * 300 + 500);
       }
     } catch {
@@ -1725,6 +1853,54 @@ function renderAdminStats() {
     if (!keyListenersAttached) return;
     window.removeEventListener("keydown", onKeyDown);
     keyListenersAttached = false;
+  }
+
+  // ── Leaderboard ──────────────────────────────────────────────────
+  async function loadLeaderboard() {
+    const listEl = document.getElementById("wordleLeaderboardList");
+    if (!listEl) return;
+    listEl.innerHTML = "<span class='wordle-lb-loading'>Loading…</span>";
+
+    try {
+      const params = new URLSearchParams({
+        username: session?.username,
+        token:    session?.token,
+      });
+      const res  = await fetch(`/api/wordle/leaderboard?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed.");
+
+      if (!data.entries || data.entries.length === 0) {
+        listEl.innerHTML = "<span class='wordle-lb-empty'>No one has finished today's wordle yet. Be the first! 🎯</span>";
+        return;
+      }
+
+      listEl.innerHTML = "";
+      data.entries.forEach((entry, i) => {
+        const row = document.createElement("div");
+        row.className = "wordle-lb-row" + (entry.username === session?.username ? " wordle-lb-you" : "");
+
+        const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+        const score = entry.won
+          ? `${entry.guesses}/6`
+          : `✗`;
+        const scoreClass = entry.won ? "lb-score-win" : "lb-score-loss";
+        const streakStr  = entry.streak > 0 ? `🔥 ${entry.streak}` : "";
+
+        row.innerHTML = `
+          <span class="lb-rank">${medal}</span>
+          <span class="lb-name"></span>
+          <span class="lb-streak">${streakStr}</span>
+          <span class="lb-score ${scoreClass}">${score}</span>
+        `;
+        row.querySelector(".lb-name").textContent =
+          entry.username === session?.username ? `${entry.username} (you)` : entry.username;
+
+        listEl.appendChild(row);
+      });
+    } catch (err) {
+      listEl.innerHTML = `<span class="wordle-lb-empty">Could not load leaderboard.</span>`;
+    }
   }
 
   // ── Public API — called by the tab-switching code in app.js ──────
