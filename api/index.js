@@ -159,6 +159,8 @@ function send(res, status, body) { res.status(status).json(body); }
 
 // ── Wordle word list (bundled, no DB needed) ────────────────────────
 let _wordList = null;
+let _answerList = null;
+
 function getWordList() {
   if (!_wordList) {
     const p = require("path").join(__dirname, "words.json");
@@ -167,13 +169,21 @@ function getWordList() {
   return _wordList;
 }
 
+function getAnswerList() {
+  if (!_answerList) {
+    const p = require("path").join(__dirname, "answers.json");
+    _answerList = JSON.parse(require("fs").readFileSync(p, "utf8"));
+  }
+  return _answerList;
+}
+
 function getWordleDayIndex() {
   const epoch = new Date("2024-01-01T00:00:00Z").getTime();
   return Math.floor((Date.now() - epoch) / 86_400_000);
 }
 
 function getTodayWord() {
-  const list = getWordList();
+  const list = getAnswerList();
   return list[getWordleDayIndex() % list.length].toLowerCase();
 }
 
