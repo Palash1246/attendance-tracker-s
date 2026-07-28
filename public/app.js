@@ -3,6 +3,17 @@ const semester = {
   end: "2026-10-16",
 };
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
 const holidays = [
   ["2026-06-01", "Bakri Id / commencement day"],
   ["2026-06-02", "Elective week"],
@@ -551,26 +562,34 @@ function renderDay() {
   if (dayEvents.length) {
     const section = document.createElement("div");
     section.className = "events-section";
-    section.innerHTML = `
-      <p class="eyebrow">Events &amp; tasks</p>
-      ${dayEvents.map((ev) => `
-        <div class="event-item">
-          <span class="event-dot"></span>
-          <div class="event-body">
-            <span class="event-name">${ev.name}</span>
-            <span class="event-time">${ev.allDay ? "All day" : ev.time}</span>
-          </div>
-          <button class="event-delete" data-event-id="${ev.id}" title="Delete event">&times;</button>
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "Events & tasks";
+    section.appendChild(eyebrow);
+
+    dayEvents.forEach((ev) => {
+      const item = document.createElement("div");
+      item.className = "event-item";
+      item.innerHTML = `
+        <span class="event-dot"></span>
+        <div class="event-body">
+          <span class="event-name"></span>
+          <span class="event-time"></span>
         </div>
-      `).join("")}
-    `;
-    section.querySelectorAll(".event-delete").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        deleteEvent(btn.dataset.eventId);
+        <button class="event-delete" title="Delete event">&times;</button>
+      `;
+      item.querySelector(".event-name").textContent = ev.name;
+      item.querySelector(".event-time").textContent = ev.allDay ? "All day" : ev.time;
+      const deleteBtn = item.querySelector(".event-delete");
+      deleteBtn.dataset.eventId = ev.id;
+      deleteBtn.addEventListener("click", async () => {
+        deleteEvent(ev.id);
         await saveState();
         render();
       });
+      section.appendChild(item);
     });
+
     els.scheduleList.parentElement.appendChild(section);
   }
 }
@@ -1080,7 +1099,7 @@ function renderAdminUsers() {
       return `
         <article class="summary-card admin-user-card" style="position: relative; padding-left: 24px; opacity: ${isBlocked ? 0.7 : 1};">
           <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: ${statusColor};"></div>
-          <h3>@${user.username}</h3>
+          <h3>@${escapeHtml(user.username)}</h3>
           <span class="course-code" style="color: ${statusColor};">${statusLabel}</span>
           <div class="card-row"><span>Created</span><strong>${createdStr}</strong></div>
           <div class="card-row"><span>Last Updated</span><strong>${updatedStr}</strong></div>
@@ -1093,7 +1112,7 @@ function renderAdminUsers() {
             </div>
           </div>
           <div style="margin-top: 12px;">
-            <button class="block-toggle-btn ${blockBtnClass}" data-username="${user.username}" data-blocked="${isBlocked}" style="width: 100%; font-size: 0.65rem; padding: 6px 12px; height: auto;">
+            <button class="block-toggle-btn ${blockBtnClass}" data-username="${escapeHtml(user.username)}" data-blocked="${isBlocked}" style="width: 100%; font-size: 0.65rem; padding: 6px 12px; height: auto;">
               ${blockBtnText}
             </button>
           </div>
