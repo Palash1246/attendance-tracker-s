@@ -719,8 +719,8 @@ function calculateCourse(courseId, target) {
     // ── Count replacement classes held in OTHER courses' slots ───
     // Walk every record for this date; if any OTHER course's slot
     // was cancelled and replacedBy === courseId, that's an extra
-    // attended class for courseId (already in the past).
-    if (date < today) {
+    // attended class for courseId.
+    if (date <= today) {
       const dateRecords = state.records[toKey(date)] || {};
       Object.values(dateRecords).forEach((rec) => {
         if (rec.actual === "cancelled" && rec.replacedBy === courseId) {
@@ -1094,7 +1094,7 @@ function calculateCourseForState(userState, courseId, target) {
     });
 
     // Count replacement classes for admin stats too
-    if (date < today) {
+    if (date <= today) {
       const dateRecords = (userState.records && userState.records[toKey(date)]) || {};
       Object.values(dateRecords).forEach((rec) => {
         if (rec.actual === "cancelled" && rec.replacedBy === courseId) {
