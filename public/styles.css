@@ -1721,13 +1721,26 @@ input[type="range"] {
   font-weight: 800;
   text-transform: uppercase;
   background: transparent;
-  color: inherit;
-  transition: border-color 0.1s;
+  color: var(--text, #ffffff);
+  transition: border-color 0.1s, background-color 0.15s;
+  user-select: none;
 }
 
-.wordle-tile.correct { background: var(--wordle-correct); border-color: var(--wordle-correct); color: var(--wordle-correct-text); }
-.wordle-tile.present { background: var(--wordle-present); border-color: var(--wordle-present); color: var(--wordle-present-text); }
-.wordle-tile.absent  { background: #3a3a3c; border-color: #3a3a3c; color: #fff; }
+.wordle-tile.filled {
+  border-color: #818384;
+  color: var(--text, #ffffff);
+  animation: wPop 0.1s ease-in-out;
+}
+
+@keyframes wPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.wordle-tile.correct { background: var(--wordle-correct); border-color: var(--wordle-correct); color: var(--wordle-correct-text, #ffffff); }
+.wordle-tile.present { background: var(--wordle-present); border-color: var(--wordle-present); color: var(--wordle-present-text, #ffffff); }
+.wordle-tile.absent  { background: #3a3a3c; border-color: #3a3a3c; color: #ffffff; }
 
 /* Flip reveal animation */
 @keyframes wFlip {

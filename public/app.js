@@ -588,7 +588,7 @@ function renderDay() {
         });
       });
 
-      // ⊘ cancel button — toggle picker instead of directly setting
+      // ⊘ cancel button — immediately set cancelled and open replacement picker
       const cancelBtn = actionsDiv.querySelector(".cancelled-btn");
       cancelBtn.addEventListener("click", async () => {
         const date  = parseDate(actionsDiv.dataset.date);
@@ -604,8 +604,15 @@ function renderDay() {
           await saveState();
           render();
         } else {
-          // Show the replacement picker
-          pickerDiv.classList.toggle("hidden");
+          // Mark as cancelled immediately
+          setStatus(date, itm, "actual", "cancelled");
+          setStatus(date, itm, "planned", null);
+          await saveState();
+          render();
+          // Find newly rendered picker and reveal it
+          const actionEl = els.scheduleList.querySelector(`.class-actions[data-id="${classId(itm)}"]`);
+          const pickerEl = actionEl?.parentElement?.querySelector(".replacement-picker");
+          if (pickerEl) pickerEl.classList.remove("hidden");
         }
       });
 
@@ -1703,7 +1710,9 @@ function renderAdminStats() {
           tile.classList.add("restored");           // prevents re-animation
         } else if (i === wState.guesses.length && !wState.gameOver) {
           // Active row — fill from wState.current
-          tile.textContent = (wState.current[j] || "").toUpperCase();
+          const letter = (wState.current[j] || "").toUpperCase();
+          tile.textContent = letter;
+          if (letter) tile.classList.add("filled");
         }
         rowEl.appendChild(tile);
       }
@@ -1712,7 +1721,6 @@ function renderAdminStats() {
   }
 
   // Update only the active input row in place — called on every add/delete.
-  // BUG FIX 1: committed rows are never touched here, so they can't re-animate.
   function renderActiveRow() {
     const board = document.getElementById("wordleBoard");
     if (!board) return;
@@ -1721,13 +1729,15 @@ function renderAdminStats() {
     if (!rowEl) return;
     for (let j = 0; j < WORD_LENGTH; j++) {
       const tile = rowEl.children[j];
-      if (tile) tile.textContent = (wState.current[j] || "").toUpperCase();
+      const letter = (wState.current[j] || "").toUpperCase();
+      if (tile) {
+        tile.textContent = letter;
+        tile.classList.toggle("filled", !!letter);
+      }
     }
   }
 
   // Apply the flip animation + colours to a newly committed row.
-  // BUG FIX 2: colour classes are added AFTER the flip delay so the
-  // tile face-down phase hides the colour, then reveals it on flip-back.
   function revealCommittedRow(rowIndex, result) {
     const board = document.getElementById("wordleBoard");
     if (!board) return;
@@ -1739,7 +1749,7 @@ function renderAdminStats() {
       const delay = j * 300;  // stagger each tile by 300 ms
       if (!tile) continue;
 
-      // Start the flip
+      tile.classList.remove("filled");
       tile.style.setProperty("--delay", `${delay}ms`);
       tile.classList.add("revealed");
 
