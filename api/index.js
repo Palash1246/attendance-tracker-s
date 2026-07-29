@@ -545,6 +545,161 @@ module.exports = async (req, res) => {
       return send(res, 200, { date: today, dayIndex: getWordleDayIndex(), entries });
     }
 
+    // ── MESSAGING ENDPOINTS ────────────────────────────────────────────────
+
+    // ── GET /api/messages (Admin inbox list) OR GET /api/messages/:userId (Fetch thread)
+    if (req.method === "GET" && pathname.startsWith("/api/messages")) {
+      const qs = new URL(matchedPath, "http://x").searchParams;
+      const payload = verifyToken(qs.get("token"));
+      if (!payload) return send(res, 401, { error: "Please log in again." });
+
+      const parts = pathname.split("/").filter(Boolean); // ['api', 'messages', ...]
+
+      // GET /api/messages -> Admin inbox list
+      if (parts.length === 2) {
+        if (payload.role !== "admin") return send(res, 403, { error: "Forbidden. Admin access required." });
+
+        let userKeys = [];
+        if (!KV_URL || !KV_TOKEN) {
+          const db = getLocalDb();
+          userKeys = Object.keys(db.users || {}).map(name => `user:${name}`);
+        } else {
+          const r = await fetch(`${KV_URL}/keys/user:*`, {
+            headers: { Authorization: `Bearer ${KV_TOKEN}` },
+          });
+          if (!r.ok) throw new Error(`KV keys read failed (${r.status})`);
+          const data = await r.json();
+          userKeys = Array.isArray(data.result) ? data.result : [];
+        }
+
+        const threads = [];
+        for (const key of userKeys) {
+          const uname = key.slice(5);
+          if (uname === "admin") continue;
+          const messages = (await kvGet(`messages:${uname}`)) || [];
+          const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+          const unreadCount = messages.filter(m => m.sender === "user" && !m.readByAdmin).length;
+
+          threads.push({
+            userId: uname,
+            lastMessage: lastMsg ? lastMsg.body : null,
+            lastMessageAt: lastMsg ? lastMsg.createdAt : null,
+            unreadCount,
+          });
+        }
+
+        // Sort threads: most recent activity first, then alphabetical
+        threads.sort((a, b) => {
+          if (a.lastMessageAt && b.lastMessageAt) {
+            return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+          }
+          if (a.lastMessageAt) return -1;
+          if (b.lastMessageAt) return 1;
+          return a.userId.localeCompare(b.userId);
+        });
+
+        return send(res, 200, { threads });
+      }
+
+      // GET /api/messages/:userId -> Fetch specific thread
+      if (parts.length === 3) {
+        const targetUserId = cleanUsername(parts[2]);
+        if (!targetUserId) return send(res, 400, { error: "Invalid user ID." });
+
+        if (payload.role !== "admin" && payload.sub !== targetUserId) {
+          return send(res, 403, { error: "Forbidden. You can only view your own thread." });
+        }
+
+        const messages = (await kvGet(`messages:${targetUserId}`)) || [];
+        const unreadCount = messages.filter(m => 
+          payload.role === "admin" 
+            ? (m.sender === "user" && !m.readByAdmin)
+            : (m.sender === "admin" && !m.readByUser)
+        ).length;
+
+        return send(res, 200, { userId: targetUserId, messages, unreadCount });
+      }
+    }
+
+    // ── POST /api/messages (Send message)
+    if (req.method === "POST" && pathname === "/api/messages") {
+      const payload = verifyToken(body.token);
+      if (!payload) return send(res, 401, { error: "Please log in again." });
+
+      const targetUserId = cleanUsername(body.userId);
+      const sender = String(body.sender || "").toLowerCase();
+      const rawBody = String(body.body || "").trim();
+
+      if (!targetUserId) return send(res, 400, { error: "User ID is required." });
+      if (sender !== "user" && sender !== "admin") return send(res, 400, { error: "Invalid sender type." });
+      if (!rawBody) return send(res, 400, { error: "Message cannot be empty." });
+      if (rawBody.length > 1000) return send(res, 400, { error: "Message exceeds 1000 characters." });
+
+      // Auth checks: user can only send to their own thread; admin can send to any user thread
+      if (sender === "user" && payload.sub !== targetUserId) {
+        return send(res, 403, { error: "Forbidden. You can only send messages in your own thread." });
+      }
+      if (sender === "admin" && payload.role !== "admin") {
+        return send(res, 403, { error: "Forbidden. Admin authorization required." });
+      }
+
+      const messages = (await kvGet(`messages:${targetUserId}`)) || [];
+      const newMsg = {
+        id: `msg_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`,
+        threadUserId: targetUserId,
+        sender,
+        body: rawBody,
+        createdAt: new Date().toISOString(),
+        readByUser: sender === "user",
+        readByAdmin: sender === "admin",
+      };
+
+      messages.push(newMsg);
+      await kvSet(`messages:${targetUserId}`, messages);
+
+      return send(res, 201, { success: true, message: newMsg });
+    }
+
+    // ── POST /api/messages/:userId/read (Mark thread read)
+    if (req.method === "POST" && pathname.startsWith("/api/messages/") && pathname.endsWith("/read")) {
+      const parts = pathname.split("/").filter(Boolean); // ['api', 'messages', ':userId', 'read']
+      if (parts.length === 4 && parts[3] === "read") {
+        const targetUserId = cleanUsername(parts[2]);
+        const payload = verifyToken(body.token);
+        if (!payload) return send(res, 401, { error: "Please log in again." });
+
+        const reader = String(body.reader || "").toLowerCase();
+        if (reader !== "user" && reader !== "admin") {
+          return send(res, 400, { error: "Invalid reader type." });
+        }
+
+        if (reader === "user" && payload.sub !== targetUserId) {
+          return send(res, 403, { error: "Forbidden." });
+        }
+        if (reader === "admin" && payload.role !== "admin") {
+          return send(res, 403, { error: "Forbidden." });
+        }
+
+        const messages = (await kvGet(`messages:${targetUserId}`)) || [];
+        let updated = false;
+        for (const m of messages) {
+          if (reader === "user" && m.sender === "admin" && !m.readByUser) {
+            m.readByUser = true;
+            updated = true;
+          } else if (reader === "admin" && m.sender === "user" && !m.readByAdmin) {
+            m.readByAdmin = true;
+            updated = true;
+          }
+        }
+
+        if (updated) {
+          await kvSet(`messages:${targetUserId}`, messages);
+        }
+
+        return send(res, 200, { success: true, userId: targetUserId });
+      }
+    }
+
     return send(res, 404, { error: "Not found." });
 
   } catch (err) {
