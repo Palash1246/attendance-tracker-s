@@ -3,6 +3,17 @@ const semester = {
   end: "2026-10-16",
 };
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
 const holidays = [
   ["2026-06-01", "Bakri Id / commencement day"],
   ["2026-06-02", "Elective week"],
@@ -503,41 +514,137 @@ function renderDay() {
   if (!classes.length) {
     els.scheduleList.innerHTML = `<div class="empty-state">No regular classes for this day.</div>`;
   } else {
-    els.scheduleList.innerHTML = classes
-      .map((item) => {
-        const id = classId(item);
-        const actual = getStatus(selectedDate, item, "actual");
-        const planned = getStatus(selectedDate, item, "planned");
-        const course = courses[item.course];
-        const isCancelled = actual === "cancelled";
-        return `
-          <article class="class-item${isCancelled ? " cancelled" : ""}" data-course="${item.course}">
-            <div class="class-time">${item.start}<br />${item.end}</div>
-            <div class="class-main">
-              <strong>${course.name}</strong>
-              <span>${item.type}${isCancelled ? ` <span class="cancelled-badge">CANC</span>` : ""}</span>
-            </div>
-            <div class="class-actions" data-date="${key}" data-id="${id}">
-              <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
-              <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
-              <button class="status-button cancelled-btn ${isCancelled ? "active" : ""}" data-field="actual" data-value="cancelled" title="Cancelled">⊘</button>
-              <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk" ${isCancelled ? "disabled" : ""}>B</button>
-            </div>
-          </article>
-        `;
-      })
-      .join("");
+    els.scheduleList.innerHTML = "";
+    classes.forEach((item) => {
+      const id          = classId(item);
+      const actual      = getStatus(selectedDate, item, "actual");
+      const planned     = getStatus(selectedDate, item, "planned");
+      const course      = courses[item.course];
+      const isCancelled = actual === "cancelled";
+      const replacedBy  = isCancelled
+        ? (state.records[key]?.[id]?.replacedBy || null)
+        : null;
 
-    els.scheduleList.querySelectorAll(".status-button").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const parent = button.closest(".class-actions");
-        const date = parseDate(parent.dataset.date);
-        const item = classes.find((entry) => classId(entry) === parent.dataset.id);
-        const current = getStatus(date, item, button.dataset.field);
-        setStatus(date, item, button.dataset.field, current === button.dataset.value ? null : button.dataset.value);
-        await saveState();
-        render();
+      const article = document.createElement("article");
+      article.className = `class-item${isCancelled ? " cancelled" : ""}`;
+      article.dataset.course = item.course;
+
+      article.innerHTML = `
+        <div class="class-time">${item.start}<br />${item.end}</div>
+        <div class="class-main">
+          <strong></strong>
+          <span class="class-type-row"></span>
+        </div>
+        <div class="class-actions" data-date="${key}" data-id="${id}">
+          <button class="status-button attended ${actual === "attended" ? "active" : ""}" data-field="actual" data-value="attended" title="Attended">A</button>
+          <button class="status-button missed ${actual === "missed" ? "active" : ""}" data-field="actual" data-value="missed" title="Missed">M</button>
+          <button class="status-button cancelled-btn ${isCancelled ? "active" : ""}" title="Cancelled">⊘</button>
+          <button class="status-button bunk ${planned === "bunk" ? "active" : ""}" data-field="planned" data-value="bunk" title="Mandatory bunk" ${isCancelled ? "disabled" : ""}>B</button>
+        </div>
+        <div class="replacement-picker hidden" data-date="${key}" data-id="${id}">
+          <span class="replacement-label">Replaced by:</span>
+          ${Object.keys(courses).map(c =>
+            `<button class="repl-btn${replacedBy === c ? " active" : ""}" data-course="${c}">${c}</button>`
+          ).join("")}
+          <button class="repl-btn repl-none${!replacedBy ? " active" : ""}">None</button>
+        </div>
+      `;
+
+      // Fill text content safely (XSS-safe)
+      article.querySelector("strong").textContent = course.name;
+      const typeSpan = article.querySelector(".class-type-row");
+      typeSpan.textContent = item.type;
+      if (isCancelled) {
+        const cancBadge = document.createElement("span");
+        cancBadge.className = "cancelled-badge";
+        cancBadge.textContent = "CANC";
+        typeSpan.appendChild(cancBadge);
+        if (replacedBy) {
+          const replBadge = document.createElement("span");
+          replBadge.className = "replaced-badge";
+          replBadge.textContent = `→ ${replacedBy}`;
+          typeSpan.appendChild(replBadge);
+        }
+      }
+
+      const actionsDiv = article.querySelector(".class-actions");
+      const pickerDiv  = article.querySelector(".replacement-picker");
+
+      // A / M / B buttons — standard behaviour
+      actionsDiv.querySelectorAll("[data-field]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const date    = parseDate(actionsDiv.dataset.date);
+          const itm     = classes.find((e) => classId(e) === actionsDiv.dataset.id);
+          const current = getStatus(date, itm, btn.dataset.field);
+          setStatus(date, itm, btn.dataset.field, current === btn.dataset.value ? null : btn.dataset.value);
+          // If un-cancelling, also clear any replacedBy
+          if (btn.dataset.field === "actual" && btn.dataset.value === "attended") {
+            const dk = toKey(date);
+            const eid = classId(itm);
+            if (state.records[dk]?.[eid]) delete state.records[dk][eid].replacedBy;
+          }
+          await saveState();
+          render();
+        });
       });
+
+      // ⊘ cancel button — immediately set cancelled and open replacement picker
+      const cancelBtn = actionsDiv.querySelector(".cancelled-btn");
+      cancelBtn.addEventListener("click", async () => {
+        const date  = parseDate(actionsDiv.dataset.date);
+        const itm   = classes.find((e) => classId(e) === actionsDiv.dataset.id);
+        const cur   = getStatus(date, itm, "actual");
+
+        if (cur === "cancelled") {
+          // Un-cancel: clear cancelled and replacedBy
+          setStatus(date, itm, "actual", null);
+          const dk  = toKey(date);
+          const eid = classId(itm);
+          if (state.records[dk]?.[eid]) delete state.records[dk][eid].replacedBy;
+          await saveState();
+          render();
+        } else {
+          // Mark as cancelled immediately
+          setStatus(date, itm, "actual", "cancelled");
+          setStatus(date, itm, "planned", null);
+          await saveState();
+          render();
+          // Find newly rendered picker and reveal it
+          const actionEl = els.scheduleList.querySelector(`.class-actions[data-id="${classId(itm)}"]`);
+          const pickerEl = actionEl?.parentElement?.querySelector(".replacement-picker");
+          if (pickerEl) pickerEl.classList.remove("hidden");
+        }
+      });
+
+      // Replacement picker buttons
+      pickerDiv.querySelectorAll(".repl-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const date  = parseDate(pickerDiv.dataset.date);
+          const itm   = classes.find((e) => classId(e) === pickerDiv.dataset.id);
+          const dk    = toKey(date);
+          const eid   = classId(itm);
+
+          // Mark as cancelled
+          setStatus(date, itm, "actual", "cancelled");
+          setStatus(date, itm, "planned", null);
+
+          // Store replacedBy (or clear it for "None")
+          if (!state.records[dk]) state.records[dk] = {};
+          if (!state.records[dk][eid]) state.records[dk][eid] = {};
+
+          const chosen = btn.dataset.course || null;
+          if (chosen) {
+            state.records[dk][eid].replacedBy = chosen;
+          } else {
+            delete state.records[dk][eid].replacedBy;
+          }
+
+          await saveState();
+          render();
+        });
+      });
+
+      els.scheduleList.appendChild(article);
     });
   }
 
@@ -551,26 +658,34 @@ function renderDay() {
   if (dayEvents.length) {
     const section = document.createElement("div");
     section.className = "events-section";
-    section.innerHTML = `
-      <p class="eyebrow">Events &amp; tasks</p>
-      ${dayEvents.map((ev) => `
-        <div class="event-item">
-          <span class="event-dot"></span>
-          <div class="event-body">
-            <span class="event-name">${ev.name}</span>
-            <span class="event-time">${ev.allDay ? "All day" : ev.time}</span>
-          </div>
-          <button class="event-delete" data-event-id="${ev.id}" title="Delete event">&times;</button>
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "Events & tasks";
+    section.appendChild(eyebrow);
+
+    dayEvents.forEach((ev) => {
+      const item = document.createElement("div");
+      item.className = "event-item";
+      item.innerHTML = `
+        <span class="event-dot"></span>
+        <div class="event-body">
+          <span class="event-name"></span>
+          <span class="event-time"></span>
         </div>
-      `).join("")}
-    `;
-    section.querySelectorAll(".event-delete").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        deleteEvent(btn.dataset.eventId);
+        <button class="event-delete" title="Delete event">&times;</button>
+      `;
+      item.querySelector(".event-name").textContent = ev.name;
+      item.querySelector(".event-time").textContent = ev.allDay ? "All day" : ev.time;
+      const deleteBtn = item.querySelector(".event-delete");
+      deleteBtn.dataset.eventId = ev.id;
+      deleteBtn.addEventListener("click", async () => {
+        deleteEvent(ev.id);
         await saveState();
         render();
       });
+      section.appendChild(item);
     });
+
     els.scheduleList.parentElement.appendChild(section);
   }
 }
@@ -584,12 +699,13 @@ function calculateCourse(courseId, target) {
   const end = parseDate(semester.end);
 
   for (let date = parseDate(semester.start); date <= end; date = addDays(date, 1)) {
+    // ── Count scheduled classes for this course ──────────────────
     const classes = getClassesForDate(date).filter((item) => item.course === courseId);
     classes.forEach((item) => {
-      const actual = getStatus(date, item, "actual");
+      const actual  = getStatus(date, item, "actual");
       const planned = getStatus(date, item, "planned");
       if (actual === "cancelled") {
-        return;
+        return;  // cancelled — doesn't count for original course
       }
       if (actual) {
         total += 1;
@@ -599,6 +715,20 @@ function calculateCourse(courseId, target) {
         if (planned === "bunk") plannedBunks += 1;
       }
     });
+
+    // ── Count replacement classes held in OTHER courses' slots ───
+    // Walk every record for this date; if any OTHER course's slot
+    // was cancelled and replacedBy === courseId, that's an extra
+    // attended class for courseId.
+    if (date <= today) {
+      const dateRecords = state.records[toKey(date)] || {};
+      Object.values(dateRecords).forEach((rec) => {
+        if (rec.actual === "cancelled" && rec.replacedBy === courseId) {
+          total   += 1;
+          attended += 1;
+        }
+      });
+    }
   }
 
   const projectedTotal = total + upcoming;
@@ -741,7 +871,16 @@ function switchTab(panelId) {
   });
   els.trackerView.classList.toggle("hidden", panelId !== "trackerView");
   els.weeklyPanel.classList.toggle("hidden", panelId !== "weeklyPanel");
+  const wordleView = document.querySelector("#wordleView");
+  if (wordleView) wordleView.classList.toggle("hidden", panelId !== "wordleView");
+
   if (panelId === "weeklyPanel") renderWeekly();
+
+  if (panelId === "wordleView") {
+    if (window.WordleModule) window.WordleModule.init();
+  } else {
+    if (window.WordleModule) window.WordleModule.detach();
+  }
 }
 
 // ─────────────────────────────────── WEEKLY SCHEDULE VIEW
@@ -938,7 +1077,7 @@ function calculateCourseForState(userState, courseId, target) {
   for (let date = parseDate(semester.start); date <= end; date = addDays(date, 1)) {
     const classes = getClassesForDate(date).filter((item) => item.course === courseId);
     classes.forEach((item) => {
-      const records = userState.records[toKey(date)] || {};
+      const records = (userState.records && userState.records[toKey(date)]) || {};
       const rec = records[classId(item)] || {};
       const actual = rec.actual || null;
       const planned = rec.planned || null;
@@ -953,6 +1092,17 @@ function calculateCourseForState(userState, courseId, target) {
         if (planned === "bunk") plannedBunks += 1;
       }
     });
+
+    // Count replacement classes for admin stats too
+    if (date <= today) {
+      const dateRecords = (userState.records && userState.records[toKey(date)]) || {};
+      Object.values(dateRecords).forEach((rec) => {
+        if (rec.actual === "cancelled" && rec.replacedBy === courseId) {
+          total    += 1;
+          attended += 1;
+        }
+      });
+    }
   }
 
   const projectedTotal = total + upcoming;
@@ -1071,7 +1221,7 @@ function renderAdminUsers() {
       return `
         <article class="summary-card admin-user-card" style="position: relative; padding-left: 24px; opacity: ${isBlocked ? 0.7 : 1};">
           <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: ${statusColor};"></div>
-          <h3>@${user.username}</h3>
+          <h3>@${escapeHtml(user.username)}</h3>
           <span class="course-code" style="color: ${statusColor};">${statusLabel}</span>
           <div class="card-row"><span>Created</span><strong>${createdStr}</strong></div>
           <div class="card-row"><span>Last Updated</span><strong>${updatedStr}</strong></div>
@@ -1084,7 +1234,7 @@ function renderAdminUsers() {
             </div>
           </div>
           <div style="margin-top: 12px;">
-            <button class="block-toggle-btn ${blockBtnClass}" data-username="${user.username}" data-blocked="${isBlocked}" style="width: 100%; font-size: 0.65rem; padding: 6px 12px; height: auto;">
+            <button class="block-toggle-btn ${blockBtnClass}" data-username="${escapeHtml(user.username)}" data-blocked="${isBlocked}" style="width: 100%; font-size: 0.65rem; padding: 6px 12px; height: auto;">
               ${blockBtnText}
             </button>
           </div>
@@ -1341,3 +1491,428 @@ function renderAdminStats() {
     })
     .join("");
 }
+
+// ════════════════════════════════════════════════════════════════════
+// WORDLE MODULE
+// Self-contained — reads App-level globals: session (username, token)
+// ════════════════════════════════════════════════════════════════════
+(function WordleModule() {
+  const MAX_GUESSES  = 6;
+  const WORD_LENGTH  = 5;
+
+  const KEYBOARD_ROWS = [
+    ["Q","W","E","R","T","Y","U","I","O","P"],
+    ["A","S","D","F","G","H","J","K","L"],
+    ["Enter","Z","X","C","V","B","N","M","⌫"],
+  ];
+
+  const WIN_MESSAGES = [
+    "Genius! 🎉", "Magnificent! 🌟", "Impressive! 👏",
+    "Splendid! ✨",  "Great! 😊",      "Phew! 😅",
+  ];
+
+  let wState = null;   // { guesses[], current, gameOver, message, answer, loading }
+  let shakeRow = null;
+
+  // ── Initialise when the Wordle tab is opened ────────────────────
+  async function initWordle() {
+    wState = {
+      guesses:  [],
+      current:  "",
+      gameOver: false,
+      message:  "",
+      answer:   "",
+      loading:  true,
+    };
+    renderAll();
+    await loadWordleState();
+  }
+
+  // ── Load today's state from the server ──────────────────────────
+  async function loadWordleState() {
+    try {
+      const currentUser  = session?.username;
+      const currentToken = session?.token;
+      const params = new URLSearchParams({
+        username: currentUser,
+        token:    currentToken,
+      });
+      const res  = await fetch(`/api/wordle/word?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load wordle.");
+
+      const today  = new Date().toISOString().slice(0, 10);
+      const dateEl = document.getElementById("wordleDate");
+      if (dateEl) {
+        dateEl.textContent = `Wordle #${data.dayIndex}  ·  ${today}`;
+      }
+
+      // Show streak bar
+      if (data.streak) {
+        const bar = document.getElementById("wordleStreakBar");
+        if (bar) {
+          document.getElementById("wordleStreakCount").textContent = data.streak.current;
+          document.getElementById("wordleStreakBest").textContent  = data.streak.best;
+          bar.classList.remove("hidden");
+        }
+      }
+
+      if (data.savedState) {
+        // Restore a game in progress or already completed
+        const s = data.savedState;
+        wState.guesses  = s.guesses || [];
+        wState.gameOver = s.gameOver || false;
+        if (s.gameOver) {
+          wState.message = s.won
+            ? (WIN_MESSAGES[s.guesses.length - 1] || "Well done!")
+            : "Better luck tomorrow!";
+          wState.answer = s.answer || "";
+        }
+      }
+      wState.loading = false;
+      renderAll();
+      if (!wState.gameOver) attachKeyListeners();
+      loadLeaderboard();
+    } catch (err) {
+      wState.loading = false;
+      setError(err.message);
+      renderAll();
+    }
+  }
+
+  // ── Input handlers ───────────────────────────────────────────────
+  function handleAdd(key) {
+    if (wState.gameOver || wState.current.length >= WORD_LENGTH) return;
+    wState.current += key.toLowerCase();
+    setError("");
+    // BUG FIX 1: Only patch the active row instead of rebuilding the whole board
+    renderActiveRow();
+  }
+
+  function handleDelete() {
+    if (wState.gameOver || !wState.current.length) return;
+    wState.current = wState.current.slice(0, -1);
+    // BUG FIX 1: Only patch the active row instead of rebuilding the whole board
+    renderActiveRow();
+  }
+
+  async function handleSubmit() {
+    if (wState.gameOver) return;
+    if (wState.current.length !== WORD_LENGTH) {
+      setError("Not enough letters");
+      triggerShake(wState.guesses.length);
+      return;
+    }
+    if (wState.guesses.some(g => g.guess === wState.current)) {
+      setError("Already tried that word!");
+      triggerShake(wState.guesses.length);
+      return;
+    }
+
+    setError("");
+    const guess        = wState.current;
+    const attemptCount = wState.guesses.length + 1;
+    const currentUser  = session?.username;
+    const currentToken = session?.token;
+
+    try {
+      const res  = await fetch("/api/wordle/check", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: currentUser,
+          token:    currentToken,
+          guess,
+          attemptCount,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        // BUG FIX 3: Do NOT clear wState.current on error so the user can
+        // correct their spelling. Just shake and show the error message.
+        setError(data.error || "Server error.");
+        triggerShake(wState.guesses.length);
+        return;
+      }
+
+      // Commit the guess — clear current word and add to guesses list
+      const rowIndex   = wState.guesses.length;  // which board row we just committed
+      const newGuesses = [...wState.guesses, { guess, result: data.result }];
+      wState.guesses   = newGuesses;
+      wState.current   = "";
+      // BUG FIX 1 & 2: Reveal the committed row with the flip animation.
+      // We paint letters immediately (no colour yet) then apply colour classes
+      // after each tile's flip completes, so the colour is hidden during the flip.
+      revealCommittedRow(rowIndex, data.result);
+      renderKeyboard();     // update keyboard key colours after each guess
+      renderActiveRow();    // clear the active input row
+
+      if (data.isWin) {
+        setTimeout(() => {
+          wState.gameOver = true;
+          wState.message  = WIN_MESSAGES[newGuesses.length - 1] || "Great!";
+          detachKeyListeners();
+          // Don't rebuild the board — just update keyboard colours + show end screen
+          renderKeyboard();
+          renderEndScreen();
+          loadLeaderboard();
+        }, WORD_LENGTH * 300 + 500);
+      } else if (newGuesses.length >= MAX_GUESSES) {
+        setTimeout(() => {
+          wState.gameOver = true;
+          wState.message  = "Better luck tomorrow!";
+          wState.answer   = data.answer || "";
+          detachKeyListeners();
+          // Don't rebuild the board — just update keyboard colours + show end screen
+          renderKeyboard();
+          renderEndScreen();
+          loadLeaderboard();
+        }, WORD_LENGTH * 300 + 500);
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    }
+  }
+
+  // ── Rendering ────────────────────────────────────────────────────
+  // renderAll: full rebuild — called on init/restore only.
+  function renderAll() {
+    buildBoardDOM();
+    renderKeyboard();
+    renderEndScreen();
+  }
+
+  // Build the entire 6-row board from scratch.
+  // Committed rows from wState.guesses are stamped with their final colours
+  // immediately (this is the restore path — no animation needed).
+  // The active row and empty rows get blank tiles.
+  function buildBoardDOM() {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    board.innerHTML = "";
+
+    for (let i = 0; i < MAX_GUESSES; i++) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "wordle-row";
+      rowEl.dataset.row = i;
+
+      const committed = wState.guesses[i];
+
+      for (let j = 0; j < WORD_LENGTH; j++) {
+        const tile = document.createElement("div");
+        tile.className = "wordle-tile";
+        tile.dataset.col = j;
+
+        if (committed) {
+          // Restored state — show final colour straight away, no animation
+          tile.textContent = committed.guess[j].toUpperCase();
+          tile.classList.add(committed.result[j]);  // correct/present/absent
+          tile.classList.add("restored");           // prevents re-animation
+        } else if (i === wState.guesses.length && !wState.gameOver) {
+          // Active row — fill from wState.current
+          const letter = (wState.current[j] || "").toUpperCase();
+          tile.textContent = letter;
+          if (letter) tile.classList.add("filled");
+        }
+        rowEl.appendChild(tile);
+      }
+      board.appendChild(rowEl);
+    }
+  }
+
+  // Update only the active input row in place — called on every add/delete.
+  function renderActiveRow() {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    const activeIndex = wState.guesses.length;
+    const rowEl = board.querySelector(`[data-row="${activeIndex}"]`);
+    if (!rowEl) return;
+    for (let j = 0; j < WORD_LENGTH; j++) {
+      const tile = rowEl.children[j];
+      const letter = (wState.current[j] || "").toUpperCase();
+      if (tile) {
+        tile.textContent = letter;
+        tile.classList.toggle("filled", !!letter);
+      }
+    }
+  }
+
+  // Apply the flip animation + colours to a newly committed row.
+  function revealCommittedRow(rowIndex, result) {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    const rowEl = board.querySelector(`[data-row="${rowIndex}"]`);
+    if (!rowEl) return;
+
+    for (let j = 0; j < WORD_LENGTH; j++) {
+      const tile  = rowEl.children[j];
+      const delay = j * 300;  // stagger each tile by 300 ms
+      if (!tile) continue;
+
+      tile.classList.remove("filled");
+      tile.style.setProperty("--delay", `${delay}ms`);
+      tile.classList.add("revealed");
+
+      // Apply the colour class exactly when the tile reaches face-up
+      // (halfway through the 500 ms flip = 250 ms after it starts)
+      setTimeout(() => {
+        tile.classList.add(result[j]);  // correct / present / absent
+      }, delay + 250);
+    }
+  }
+
+  function renderKeyboard() {
+    const kb = document.getElementById("wordleKeyboard");
+    if (!kb) return;
+    kb.innerHTML = "";
+
+    const keyStates = buildKeyStates(wState.guesses);
+    KEYBOARD_ROWS.forEach(row => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "wordle-key-row";
+      row.forEach(key => {
+        const btn = document.createElement("button");
+        btn.className = `wordle-key ${keyStates[key] || ""}`;
+        btn.textContent = key;
+        btn.dataset.key = key;
+        btn.addEventListener("click", () => onKeyClick(key));
+        rowEl.appendChild(btn);
+      });
+      kb.appendChild(rowEl);
+    });
+  }
+
+  function renderEndScreen() {
+    const end     = document.getElementById("wordleEndScreen");
+    const msgEl   = document.getElementById("wordleEndMessage");
+    const revealEl = document.getElementById("wordleAnswerReveal");
+    if (!end) return;
+
+    if (wState.gameOver) {
+      end.classList.remove("hidden");
+      msgEl.textContent = wState.message;
+      if (wState.answer) {
+        revealEl.textContent = wState.answer.toUpperCase();
+        revealEl.classList.remove("hidden");
+      } else {
+        revealEl.classList.add("hidden");
+      }
+    } else {
+      end.classList.add("hidden");
+    }
+  }
+
+  // ── Key state builder (mirrors wordle utils/helpers.js) ──────────
+  function buildKeyStates(guesses) {
+    const priority = { correct: 3, present: 2, absent: 1 };
+    const states   = {};
+    for (const { guess, result } of guesses) {
+      for (let i = 0; i < guess.length; i++) {
+        const letter = guess[i].toUpperCase();
+        const status = result[i];
+        if (!states[letter] || priority[status] > priority[states[letter]])
+          states[letter] = status;
+      }
+    }
+    return states;
+  }
+
+  // ── Shake animation ──────────────────────────────────────────────
+  // BUG FIX 3: Shake only manipulates the row's class — it does not
+  // rebuild the board, so wState.current is preserved during the shake.
+  function triggerShake(rowIndex) {
+    const board = document.getElementById("wordleBoard");
+    if (!board) return;
+    const rowEl = board.querySelector(`[data-row="${rowIndex}"]`);
+    if (!rowEl) return;
+    rowEl.classList.add("shake");
+    setTimeout(() => rowEl.classList.remove("shake"), 600);
+  }
+
+  // ── Error helper ─────────────────────────────────────────────────
+  function setError(msg) {
+    const el = document.getElementById("wordleError");
+    if (el) el.textContent = msg;
+  }
+
+  // ── Keyboard event listeners ─────────────────────────────────────
+  let keyListenersAttached = false;
+
+  function onKeyDown(e) {
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key.toUpperCase();
+    if (key === "ENTER")     handleSubmit();
+    else if (key === "BACKSPACE") handleDelete();
+    else if (/^[A-Z]$/.test(key)) handleAdd(key);
+  }
+
+  function onKeyClick(key) {
+    if      (key === "Enter") handleSubmit();
+    else if (key === "⌫")    handleDelete();
+    else                      handleAdd(key);
+  }
+
+  function attachKeyListeners()  {
+    if (keyListenersAttached) return;
+    window.addEventListener("keydown", onKeyDown);
+    keyListenersAttached = true;
+  }
+
+  function detachKeyListeners()  {
+    if (!keyListenersAttached) return;
+    window.removeEventListener("keydown", onKeyDown);
+    keyListenersAttached = false;
+  }
+
+  // ── Leaderboard ──────────────────────────────────────────────────
+  async function loadLeaderboard() {
+    const listEl = document.getElementById("wordleLeaderboardList");
+    if (!listEl) return;
+    listEl.innerHTML = "<span class='wordle-lb-loading'>Loading…</span>";
+
+    try {
+      const params = new URLSearchParams({
+        username: session?.username,
+        token:    session?.token,
+      });
+      const res  = await fetch(`/api/wordle/leaderboard?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed.");
+
+      if (!data.entries || data.entries.length === 0) {
+        listEl.innerHTML = "<span class='wordle-lb-empty'>No one has finished today's wordle yet. Be the first! 🎯</span>";
+        return;
+      }
+
+      listEl.innerHTML = "";
+      data.entries.forEach((entry, i) => {
+        const row = document.createElement("div");
+        row.className = "wordle-lb-row" + (entry.username === session?.username ? " wordle-lb-you" : "");
+
+        const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+        const score = entry.won
+          ? `${entry.guesses}/6`
+          : `✗`;
+        const scoreClass = entry.won ? "lb-score-win" : "lb-score-loss";
+        const streakStr  = entry.streak > 0 ? `🔥 ${entry.streak}` : "";
+
+        row.innerHTML = `
+          <span class="lb-rank">${medal}</span>
+          <span class="lb-name"></span>
+          <span class="lb-streak">${streakStr}</span>
+          <span class="lb-score ${scoreClass}">${score}</span>
+        `;
+        row.querySelector(".lb-name").textContent =
+          entry.username === session?.username ? `${entry.username} (you)` : entry.username;
+
+        listEl.appendChild(row);
+      });
+    } catch (err) {
+      listEl.innerHTML = `<span class="wordle-lb-empty">Could not load leaderboard.</span>`;
+    }
+  }
+
+  // ── Public API — called by the tab-switching code in app.js ──────
+  window.WordleModule = { init: initWordle, detach: detachKeyListeners };
+})();

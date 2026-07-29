@@ -198,6 +198,7 @@
             <nav class="view-tabs" role="tablist" aria-label="Main view">
               <button id="tabTracker" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="trackerView">Courses</button>
               <button id="tabWeek"    class="tab-btn"            role="tab" aria-selected="false" data-panel="weeklyPanel">Schedule</button>
+              <button id="tabWordle"  class="tab-btn"            role="tab" aria-selected="false" data-panel="wordleView">Wordle</button>
             </nav>
           </div>
 
@@ -233,6 +234,51 @@
 
           <!-- Weekly schedule panel -->
           <div id="weeklyPanel" class="weekly-panel hidden"></div>
+
+          <!-- ══════════════════════════════ WORDLE PANEL ══════════════════ -->
+          <div id="wordleView" class="wordle-panel hidden">
+
+            <div class="wordle-header">
+              <p class="eyebrow">Daily challenge</p>
+              <h2 class="wordle-title">WORDLE</h2>
+              <p id="wordleDate" class="wordle-date"></p>
+            </div>
+
+            <!-- Error / status message -->
+            <p id="wordleError" class="wordle-error" role="alert"></p>
+
+            <!-- 6×5 board -->
+            <div id="wordleBoard" class="wordle-board"></div>
+
+            <!-- On-screen keyboard -->
+            <div id="wordleKeyboard" class="wordle-keyboard"></div>
+
+            <!-- End-of-game overlay (hidden until game over) -->
+            <div id="wordleEndScreen" class="wordle-end hidden">
+              <p id="wordleEndMessage" class="wordle-end-message"></p>
+              <div id="wordleAnswerReveal" class="wordle-answer-reveal hidden"></div>
+              <p class="wordle-comeback">Come back tomorrow for a new word! 📅</p>
+            </div>
+
+            <!-- Streak badge (always visible while on Wordle tab) -->
+            <div id="wordleStreakBar" class="wordle-streak-bar hidden">
+              <span class="streak-fire">🔥</span>
+              <span id="wordleStreakCount" class="streak-count">0</span>
+              <span class="streak-label">day streak</span>
+              <span class="streak-sep">·</span>
+              <span class="streak-label">Best:</span>
+              <span id="wordleStreakBest" class="streak-best">0</span>
+            </div>
+
+            <!-- Leaderboard (always visible, refreshes when tab opens) -->
+            <div id="wordleLeaderboard" class="wordle-leaderboard">
+              <p class="eyebrow">Today's leaderboard</p>
+              <div id="wordleLeaderboardList" class="wordle-lb-list">
+                <span class="wordle-lb-loading">Loading…</span>
+              </div>
+            </div>
+
+          </div>
 
         </main>
 
