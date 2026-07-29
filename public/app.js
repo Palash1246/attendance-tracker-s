@@ -419,23 +419,45 @@ function renderSummary() {
   const cards = Object.entries(courses).map(([courseId, course]) => {
     const stats = calculateCourse(courseId, target);
     const percent = stats.total ? Math.round((stats.attended / stats.total) * 100) : 100;
-    const progressClass = percent < state.target ? "danger" : percent >= state.target + 10 ? "good" : "";
+    const isAtRisk = percent < state.target;
+    const isWarning = !isAtRisk && percent < state.target + 5;
+    const statusClass = isAtRisk ? "danger" : isWarning ? "warn" : "good";
+    const statusColor = isAtRisk ? "var(--status-danger)" : isWarning ? "var(--status-warn)" : "var(--status-good)";
+
+    const canBunkCount = Math.max(0, stats.canBunk);
+    const mustAttendCount = Math.max(0, stats.mustAttend);
 
     return `
       <article class="summary-card" data-course="${courseId}">
-        <h3>${course.name}</h3>
-        <span class="course-code">${course.code}</span>
-        <div class="progress-track">
-          <div class="progress-fill ${progressClass}" style="width:${Math.min(percent, 100)}%"></div>
+        <div class="card-header">
+          <div>
+            <h3>${escapeHtml(course.name)}</h3>
+            <span class="course-code">${escapeHtml(course.code)}</span>
+          </div>
+          <span class="status-pip ${statusClass}" title="Status: ${statusClass}"></span>
         </div>
-        <div class="card-row"><span>Current</span><strong>${stats.attended}/${stats.total} · ${stats.total ? percent : 0}%</strong></div>
-        <div class="allowance">
-          <div class="metric-box"><span>Can bunk</span><strong>${Math.max(0, stats.canBunk)}</strong><small>classes</small></div>
-          <div class="metric-box must"><span>Must attend</span><strong>${Math.max(0, stats.mustAttend)}</strong><small>classes</small></div>
+
+        <div class="card-headline-stat">
+          <span class="eyebrow">Bunk Allowance</span>
+          <strong class="headline-bunk-val">${canBunkCount} <small>classes can bunk</small></strong>
         </div>
+
+        <div class="progress-track" title="Attendance: ${percent}% (Target: ${state.target}%)">
+          <div class="progress-fill ${statusClass}" style="width:${Math.min(percent, 100)}%; background-color: ${statusColor};"></div>
+        </div>
+
+        <div class="card-row">
+          <span>Current Attendance</span>
+          <strong>${stats.attended}/${stats.total} · <span style="color:${statusColor}">${stats.total ? percent : 0}%</span></strong>
+        </div>
+        ${mustAttendCount > 0 ? `
+          <div class="card-row warning-row">
+            <span>Must attend next</span>
+            <strong style="color: var(--status-warn)">${mustAttendCount} classes</strong>
+          </div>
+        ` : ''}
         <div class="card-row"><span>Upcoming classes</span><strong>${stats.upcoming}</strong></div>
         <div class="card-row"><span>Mandatory bunks</span><strong>${stats.plannedBunks}</strong></div>
-        <div class="card-row"><span>Projected total</span><strong>${stats.total + stats.upcoming}</strong></div>
       </article>
     `;
   });
@@ -477,7 +499,14 @@ function renderCalendar() {
           .filter(Boolean)
           .join(" ");
 
-        dates.push(`<button class="${classes}" data-date="${key}" title="${holidayMap.get(key) || ""}">${day}</button>`);
+        const pipColor = hasMark
+          ? activeRecords.some(r => r.actual === "missed") ? "var(--status-danger)" : "var(--status-good)"
+          : hasBunk ? "var(--purple)"
+          : hasCancelled ? "var(--status-warn)" : "";
+
+        const pipHtml = pipColor ? `<span class="cell-status-pip" style="background: ${pipColor};"></span>` : "";
+
+        dates.push(`<button class="${classes}" data-date="${key}" title="${holidayMap.get(key) || ""}"><span>${day}</span>${pipHtml}</button>`);
       }
 
       return `
@@ -1452,14 +1481,80 @@ function renderAdminDayDetails() {
   container.innerHTML = html || '<div class="empty-state">No user activity recorded for this day.</div>';
 }
 
+let adminStatsSortKey = "overallPercent";
+let adminStatsSortOrder = "asc"; // "asc" or "desc"
+
+function setupAdminTableSortHeaders() {
+  const table = document.querySelector(".admin-stats-table");
+  if (!table || table.dataset.sortBound) return;
+  table.dataset.sortBound = "true";
+
+  const headers = table.querySelectorAll("thead th");
+  headers.forEach((th) => {
+    let key = null;
+    const text = th.textContent.trim().toLowerCase();
+    if (text.includes("username")) key = "username";
+    else if (text.includes("last active")) key = "lastActive";
+    else if (text.includes("overall")) key = "overallPercent";
+    else if (text.includes("held")) key = "totalHeld";
+    else if (text.includes("att")) key = "totalAttended";
+
+    if (key) {
+      th.style.cursor = "pointer";
+      th.title = `Click to sort by ${th.textContent.trim()}`;
+      th.addEventListener("click", () => {
+        if (adminStatsSortKey === key) {
+          adminStatsSortOrder = adminStatsSortOrder === "asc" ? "desc" : "asc";
+        } else {
+          adminStatsSortKey = key;
+          adminStatsSortOrder = "asc";
+        }
+        renderAdminStats();
+      });
+    }
+  });
+}
+
 function renderAdminStats() {
   const tbody = document.querySelector("#adminStatsTableBody");
   if (!tbody) return;
 
-  tbody.innerHTML = adminUsersData
-    .map((user) => {
+  setupAdminTableSortHeaders();
+
+  // Prepare list with calculated metrics
+  const preparedUsers = adminUsersData.map((user) => {
+    const metrics = calculateUserState(user.state);
+    const lastActiveTime = new Date(user.updatedAt || user.createdAt || "2026-06-01").getTime();
+    return { user, metrics, lastActiveTime };
+  });
+
+  // Sort list
+  preparedUsers.sort((a, b) => {
+    let valA, valB;
+    if (adminStatsSortKey === "username") {
+      valA = a.user.username.toLowerCase();
+      valB = b.user.username.toLowerCase();
+      return adminStatsSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (adminStatsSortKey === "lastActive") {
+      valA = a.lastActiveTime;
+      valB = b.lastActiveTime;
+    } else if (adminStatsSortKey === "totalHeld") {
+      valA = a.metrics.totalHeld;
+      valB = b.metrics.totalHeld;
+    } else if (adminStatsSortKey === "totalAttended") {
+      valA = a.metrics.totalAttended;
+      valB = b.metrics.totalAttended;
+    } else {
+      // Default: overallPercent
+      valA = a.metrics.overallPercent;
+      valB = b.metrics.overallPercent;
+    }
+    return adminStatsSortOrder === "asc" ? valA - valB : valB - valA;
+  });
+
+  tbody.innerHTML = preparedUsers
+    .map(({ user, metrics }) => {
       const color = getUserColor(user.username);
-      const metrics = calculateUserState(user.state);
       const isBlocked = user.blocked === true;
       const usernameText = isBlocked ? `@${user.username} (Blocked)` : `@${user.username}`;
       const usernameStyle = isBlocked
@@ -1476,11 +1571,18 @@ function renderAdminStats() {
         ? new Date(user.updatedAt).toLocaleString()
         : new Date(user.createdAt).toLocaleString();
 
+      const overallClass = metrics.overallPercent < 75 ? "status-danger-bg" : metrics.overallPercent >= 85 ? "status-good-bg" : "status-warn-bg";
+      const overallColor = metrics.overallPercent < 75 ? "var(--status-danger)" : metrics.overallPercent >= 85 ? "var(--status-good)" : "var(--status-warn)";
+
       return `
       <tr style="opacity: ${isBlocked ? 0.7 : 1};">
-        <td style="${usernameStyle}">${usernameText}</td>
+        <td style="${usernameStyle}">${escapeHtml(usernameText)}</td>
         <td style="font-size: 0.7rem; color: var(--muted);">${lastActive}</td>
-        <td style="font-weight: bold; color: ${isBlocked ? "var(--red)" : color};">${metrics.overallPercent}%</td>
+        <td>
+          <span class="overall-badge ${overallClass}" style="color: ${overallColor}; font-weight: bold; padding: 2px 8px; border-radius: 4px; background: var(--surface-2);">
+            ${metrics.overallPercent}%
+          </span>
+        </td>
         <td>${formatCoursePercent("AD")}</td>
         <td>${formatCoursePercent("ABC")}</td>
         <td>${formatCoursePercent("HUM")}</td>
@@ -1491,8 +1593,8 @@ function renderAdminStats() {
         <td>${formatCoursePercent("TDS")}</td>
         <td>${formatCoursePercent("CF")}</td>
         <td>${metrics.totalHeld}</td>
-        <td style="color: var(--green); font-weight: bold;">${metrics.totalAttended}</td>
-        <td style="color: var(--red);">${metrics.totalMissed}</td>
+        <td style="color: var(--status-good); font-weight: bold;">${metrics.totalAttended}</td>
+        <td style="color: var(--status-danger);">${metrics.totalMissed}</td>
         <td style="color: var(--muted);">${metrics.totalCancelled}</td>
         <td style="color: var(--purple);">${metrics.totalBunked}</td>
         <td>${user.state.events?.length || 0}</td>
