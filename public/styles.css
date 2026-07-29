@@ -1939,4 +1939,283 @@ input[type="range"] {
   vertical-align: middle;
 }
 
+/* ═══════════════════════════════════════════ MESSAGES & NOTES ══════════════════ */
+
+/* ── Tab Badge ── */
+.tab-badge {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.tab-badge.hidden {
+  display: none !important;
+}
+
+/* ── User Notes Panel Layout ── */
+.messages-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 24px;
+  min-height: calc(100vh - 160px);
+}
+
+.messages-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.messages-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+/* ── Message Stack List ── */
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+
+.message-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 200px;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.9rem;
+}
+
+.message-item {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  word-break: break-word;
+}
+.message-item.sent-by-me {
+  align-self: flex-end;
+}
+.message-item.sent-by-other {
+  align-self: flex-start;
+}
+
+.message-meta {
+  display: flex;
+  gap: 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.message-item.sent-by-me .message-meta {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  font-size: 0.93rem;
+  line-height: 1.45;
+  background: var(--bg);
+  color: var(--text);
+}
+.message-item.sent-by-me .message-bubble {
+  background: var(--sidebar-bg);
+  border-color: var(--line);
+}
+.message-item.sent-by-other .message-bubble {
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+/* ── Input Form ── */
+.message-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  padding: 10px;
+  gap: 8px;
+}
+.message-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: "Inter", sans-serif;
+  font-size: 0.92rem;
+  resize: vertical;
+  min-height: 52px;
+  outline: none;
+}
+.message-textarea::placeholder {
+  color: var(--muted);
+}
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+.char-counter {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.char-counter.limit-near {
+  color: var(--red);
+}
+.message-send-btn {
+  padding: 6px 16px;
+  font-size: 0.85rem;
+}
+
+/* ── Admin Two-Pane Messages Layout ── */
+.admin-messages-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 20px;
+  min-height: calc(100vh - 160px);
+}
+
+.admin-inbox-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-right: 1px solid var(--line);
+  padding-right: 16px;
+}
+
+.admin-inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.inbox-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.inbox-card:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+.inbox-card.active {
+  background: var(--sidebar-bg);
+  border-color: var(--blue);
+}
+
+.inbox-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.inbox-username {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.inbox-time {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.inbox-snippet {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inbox-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--red);
+  color: #ffffff;
+  border-radius: 2px;
+}
+
+.admin-thread-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 8px;
+}
+
+.admin-thread-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.thread-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 250px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-align: center;
+  border: 1px dashed var(--line);
+  padding: 24px;
+}
+
+@media (max-width: 768px) {
+  .admin-messages-layout {
+    grid-template-columns: 1fr;
+  }
+  .admin-inbox-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding-right: 0;
+    padding-bottom: 16px;
+  }
+  .message-item {
+    max-width: 92%;
+  }
+}
+
 

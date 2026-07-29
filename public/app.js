@@ -388,11 +388,12 @@ function showWelcome() {
     els.welcomeDate.textContent = longDate(selectedDate);
     els.welcomeHint.textContent = "Admin Terminal Access.";
     els.semesterRange.textContent = "Managing Academy of Architecture Sem V";
-    return;
+  } else {
+    els.targetAttendance.value = state.target;
+    updateWelcomePreview();
   }
 
-  els.targetAttendance.value = state.target;
-  updateWelcomePreview();
+  if (window.MessagingModule) window.MessagingModule.checkUnreadBadges();
 }
 
 function updateWelcomePreview() {
@@ -873,6 +874,8 @@ function switchTab(panelId) {
   els.weeklyPanel.classList.toggle("hidden", panelId !== "weeklyPanel");
   const wordleView = document.querySelector("#wordleView");
   if (wordleView) wordleView.classList.toggle("hidden", panelId !== "wordleView");
+  const messagesView = document.querySelector("#messagesView");
+  if (messagesView) messagesView.classList.toggle("hidden", panelId !== "messagesView");
 
   if (panelId === "weeklyPanel") renderWeekly();
 
@@ -880,6 +883,10 @@ function switchTab(panelId) {
     if (window.WordleModule) window.WordleModule.init();
   } else {
     if (window.WordleModule) window.WordleModule.detach();
+  }
+
+  if (panelId === "messagesView") {
+    if (window.MessagingModule) window.MessagingModule.onUserOpenTab();
   }
 }
 
@@ -1187,6 +1194,9 @@ function switchAdminTab(panelId) {
   if (panelId === "adminCalendarView") {
     renderAdminCalendar();
     renderAdminDayDetails();
+  }
+  if (panelId === "adminMessagesView") {
+    if (window.MessagingModule) window.MessagingModule.onAdminOpenTab();
   }
 }
 
@@ -1915,4 +1925,446 @@ function renderAdminStats() {
 
   // ── Public API — called by the tab-switching code in app.js ──────
   window.WordleModule = { init: initWordle, detach: detachKeyListeners };
+})();
+
+/* ═══════════════════════════════════════════ MESSAGING MODULE ══════════════════ */
+(function () {
+  let activeAdminUser = null;
+  let userMessages = [];
+  let adminThreads = [];
+  let isInitialized = false;
+
+  function initMessaging() {
+    if (isInitialized) return;
+    isInitialized = true;
+
+    // Attach user form submit
+    const userForm = document.getElementById("userMessageForm");
+    const userInput = document.getElementById("userMessageInput");
+    if (userForm && userInput) {
+      userForm.addEventListener("submit", handleUserSend);
+      userInput.addEventListener("input", () => updateCharCounter("userMessageInput", "userCharCounter"));
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          userForm.requestSubmit();
+        }
+      });
+    }
+
+    // Attach admin form submit
+    const adminForm = document.getElementById("adminMessageForm");
+    const adminInput = document.getElementById("adminMessageInput");
+    if (adminForm && adminInput) {
+      adminForm.addEventListener("submit", handleAdminSend);
+      adminInput.addEventListener("input", () => updateCharCounter("adminMessageInput", "adminCharCounter"));
+      adminInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          adminForm.requestSubmit();
+        }
+      });
+    }
+
+    // Event-driven sync on window focus and tab visibility change (NO setInterval)
+    window.addEventListener("focus", onFocusOrVisibilityChange);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        onFocusOrVisibilityChange();
+      }
+    });
+
+    // Run initial unread check
+    checkUnreadBadges();
+  }
+
+  function updateCharCounter(inputId, counterId) {
+    const input = document.getElementById(inputId);
+    const counter = document.getElementById(counterId);
+    if (!input || !counter) return;
+    const len = input.value.length;
+    counter.textContent = `${len} / 1000`;
+    counter.classList.toggle("limit-near", len >= 900);
+  }
+
+  function onFocusOrVisibilityChange() {
+    if (!session || !session.username || !session.token) return;
+
+    if (session.username === "admin") {
+      const adminView = document.getElementById("adminMessagesView");
+      if (adminView && !adminView.classList.contains("hidden")) {
+        fetchAdminInbox();
+        if (activeAdminUser) {
+          fetchAdminThread(activeAdminUser);
+        }
+      } else {
+        checkUnreadBadges();
+      }
+    } else {
+      const userView = document.getElementById("messagesView");
+      if (userView && !userView.classList.contains("hidden")) {
+        fetchUserMessages();
+      } else {
+        checkUnreadBadges();
+      }
+    }
+  }
+
+  async function checkUnreadBadges() {
+    if (!session || !session.username || !session.token) return;
+
+    try {
+      if (session.username === "admin") {
+        const res = await fetch(`/api/messages?token=${encodeURIComponent(session.token)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const hasUnread = (data.threads || []).some(t => t.unreadCount > 0);
+        const badge = document.getElementById("adminUnreadBadge");
+        if (badge) badge.classList.toggle("hidden", !hasUnread);
+      } else {
+        const res = await fetch(`/api/messages/${encodeURIComponent(session.username)}?token=${encodeURIComponent(session.token)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const hasUnread = (data.messages || []).some(m => m.sender === "admin" && !m.readByUser);
+        const badge = document.getElementById("userUnreadBadge");
+        if (badge) badge.classList.toggle("hidden", !hasUnread);
+      }
+    } catch {
+      // Ignore background check failure
+    }
+  }
+
+  // ── USER SIDE METHODS ────────────────────────────────────────────────
+
+  async function onUserOpenTab() {
+    initMessaging();
+    await fetchUserMessages();
+    await markUserRead();
+  }
+
+  async function fetchUserMessages() {
+    if (!session?.username || !session?.token) return;
+
+    const localKey = `attendance-guard:messages:${session.username}`;
+
+    try {
+      const res = await fetch(`/api/messages/${encodeURIComponent(session.username)}?token=${encodeURIComponent(session.token)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch messages.");
+
+      userMessages = data.messages || [];
+      localStorage.setItem(localKey, JSON.stringify(userMessages));
+    } catch (err) {
+      // Fallback to local storage if offline/failed
+      const cached = localStorage.getItem(localKey);
+      if (cached) {
+        try { userMessages = JSON.parse(cached); } catch { userMessages = []; }
+      }
+    }
+
+    renderUserMessageList();
+    const hasUnread = userMessages.some(m => m.sender === "admin" && !m.readByUser);
+    const badge = document.getElementById("userUnreadBadge");
+    if (badge) badge.classList.toggle("hidden", !hasUnread);
+  }
+
+  function renderUserMessageList() {
+    const listEl = document.getElementById("userMessageList");
+    if (!listEl) return;
+
+    if (userMessages.length === 0) {
+      listEl.innerHTML = `<div class="message-empty">No notes yet. Leave one for your admin.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = "";
+    userMessages.forEach((m) => {
+      const isMe = m.sender === "user";
+      const item = document.createElement("div");
+      item.className = `message-item ${isMe ? "sent-by-me" : "sent-by-other"}`;
+
+      const senderLabel = isMe ? "YOU" : "ADMIN";
+      const timeStr = formatTimestamp(m.createdAt);
+
+      item.innerHTML = `
+        <div class="message-meta">
+          <span>${senderLabel}</span>
+          <span>·</span>
+          <span>${timeStr}</span>
+        </div>
+        <div class="message-bubble">${escapeHtml(m.body)}</div>
+      `;
+      listEl.appendChild(item);
+    });
+
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  async function markUserRead() {
+    if (!session?.username || !session?.token) return;
+    try {
+      await fetch(`/api/messages/${encodeURIComponent(session.username)}/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: session.token, reader: "user" }),
+      });
+      const badge = document.getElementById("userUnreadBadge");
+      if (badge) badge.classList.add("hidden");
+    } catch {
+      // Quiet fail
+    }
+  }
+
+  async function handleUserSend(e) {
+    e.preventDefault();
+    const input = document.getElementById("userMessageInput");
+    const errEl = document.getElementById("userMessageError");
+    const sendBtn = document.getElementById("userSendBtn");
+    if (!input || !errEl || !sendBtn) return;
+
+    const bodyText = input.value.trim();
+    errEl.textContent = "";
+
+    if (!bodyText) return;
+    if (bodyText.length > 1000) {
+      errEl.textContent = "Message exceeds 1000 characters.";
+      return;
+    }
+
+    sendBtn.disabled = true;
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: session.token,
+          userId: session.username,
+          sender: "user",
+          body: bodyText,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send message.");
+
+      input.value = "";
+      updateCharCounter("userMessageInput", "userCharCounter");
+      await fetchUserMessages();
+    } catch (err) {
+      errEl.textContent = err.message || "Failed to send. Check your connection.";
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  // ── ADMIN SIDE METHODS ────────────────────────────────────────────────
+
+  async function onAdminOpenTab() {
+    initMessaging();
+    await fetchAdminInbox();
+  }
+
+  async function fetchAdminInbox() {
+    if (session?.username !== "admin" || !session?.token) return;
+
+    try {
+      const res = await fetch(`/api/messages?token=${encodeURIComponent(session.token)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch inbox.");
+
+      adminThreads = data.threads || [];
+    } catch (err) {
+      adminThreads = [];
+    }
+
+    renderAdminInboxList();
+
+    const hasUnread = adminThreads.some(t => t.unreadCount > 0);
+    const badge = document.getElementById("adminUnreadBadge");
+    if (badge) badge.classList.toggle("hidden", !hasUnread);
+  }
+
+  function renderAdminInboxList() {
+    const listEl = document.getElementById("adminInboxList");
+    if (!listEl) return;
+
+    if (adminThreads.length === 0) {
+      listEl.innerHTML = `<div class="message-empty">No user threads found.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = "";
+    adminThreads.forEach((thread) => {
+      const isSelected = thread.userId === activeAdminUser;
+      const card = document.createElement("div");
+      card.className = `inbox-card ${isSelected ? "active" : ""}`;
+      card.dataset.userId = thread.userId;
+
+      const timeStr = thread.lastMessageAt ? formatTimestamp(thread.lastMessageAt) : "";
+      const snippet = thread.lastMessage ? escapeHtml(thread.lastMessage) : "(No notes yet)";
+      const badgeHtml = thread.unreadCount > 0
+        ? `<span class="inbox-badge">${thread.unreadCount}</span>`
+        : "";
+
+      card.innerHTML = `
+        <div class="inbox-card-top">
+          <span class="inbox-username">@${escapeHtml(thread.userId)}</span>
+          <span class="inbox-time">${timeStr}</span>
+        </div>
+        <div class="inbox-card-bottom" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span class="inbox-snippet">${snippet}</span>
+          ${badgeHtml}
+        </div>
+      `;
+
+      card.addEventListener("click", () => selectAdminThread(thread.userId));
+      listEl.appendChild(card);
+    });
+  }
+
+  async function selectAdminThread(userId) {
+    activeAdminUser = userId;
+    const placeholder = document.getElementById("adminThreadPlaceholder");
+    const container = document.getElementById("adminThreadContainer");
+    const title = document.getElementById("adminSelectedUserTitle");
+
+    if (placeholder) placeholder.classList.add("hidden");
+    if (container) container.classList.remove("hidden");
+    if (title) title.textContent = `@${userId}`;
+
+    renderAdminInboxList();
+    await fetchAdminThread(userId);
+    await markAdminRead(userId);
+  }
+
+  async function fetchAdminThread(userId) {
+    if (!session?.token) return;
+
+    try {
+      const res = await fetch(`/api/messages/${encodeURIComponent(userId)}?token=${encodeURIComponent(session.token)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to fetch thread.");
+
+      renderAdminMessageList(data.messages || []);
+    } catch (err) {
+      const listEl = document.getElementById("adminMessageList");
+      if (listEl) listEl.innerHTML = `<div class="message-empty">Failed to load thread.</div>`;
+    }
+  }
+
+  function renderAdminMessageList(messages) {
+    const listEl = document.getElementById("adminMessageList");
+    if (!listEl) return;
+
+    if (messages.length === 0) {
+      listEl.innerHTML = `<div class="message-empty">No notes in this thread yet.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = "";
+    messages.forEach((m) => {
+      const isMe = m.sender === "admin";
+      const item = document.createElement("div");
+      item.className = `message-item ${isMe ? "sent-by-me" : "sent-by-other"}`;
+
+      const senderLabel = isMe ? "ADMIN" : `@${m.threadUserId.toUpperCase()}`;
+      const timeStr = formatTimestamp(m.createdAt);
+
+      item.innerHTML = `
+        <div class="message-meta">
+          <span>${senderLabel}</span>
+          <span>·</span>
+          <span>${timeStr}</span>
+        </div>
+        <div class="message-bubble">${escapeHtml(m.body)}</div>
+      `;
+      listEl.appendChild(item);
+    });
+
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  async function markAdminRead(userId) {
+    if (!session?.token) return;
+    try {
+      await fetch(`/api/messages/${encodeURIComponent(userId)}/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: session.token, reader: "admin" }),
+      });
+      await fetchAdminInbox();
+    } catch {
+      // Quiet fail
+    }
+  }
+
+  async function handleAdminSend(e) {
+    e.preventDefault();
+    if (!activeAdminUser) return;
+
+    const input = document.getElementById("adminMessageInput");
+    const errEl = document.getElementById("adminMessageError");
+    const sendBtn = document.getElementById("adminSendBtn");
+    if (!input || !errEl || !sendBtn) return;
+
+    const bodyText = input.value.trim();
+    errEl.textContent = "";
+
+    if (!bodyText) return;
+    if (bodyText.length > 1000) {
+      errEl.textContent = "Message exceeds 1000 characters.";
+      return;
+    }
+
+    sendBtn.disabled = true;
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: session.token,
+          userId: activeAdminUser,
+          sender: "admin",
+          body: bodyText,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send reply.");
+
+      input.value = "";
+      updateCharCounter("adminMessageInput", "adminCharCounter");
+      await fetchAdminThread(activeAdminUser);
+      await fetchAdminInbox();
+    } catch (err) {
+      errEl.textContent = err.message || "Failed to send. Check your connection.";
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  function formatTimestamp(isoStr) {
+    if (!isoStr) return "";
+    try {
+      const d = new Date(isoStr);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const dateStr = d.toISOString().slice(0, 10);
+      const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      if (dateStr === todayStr) {
+        return timeStr;
+      }
+      return `${timeStr} · ${d.getDate()} ${monthNames[d.getMonth()].slice(0, 3)}`;
+    } catch {
+      return String(isoStr);
+    }
+  }
+
+  window.MessagingModule = {
+    init: initMessaging,
+    onUserOpenTab,
+    onAdminOpenTab,
+    checkUnreadBadges,
+  };
 })();

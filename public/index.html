@@ -199,6 +199,7 @@
               <button id="tabTracker" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="trackerView">Courses</button>
               <button id="tabWeek"    class="tab-btn"            role="tab" aria-selected="false" data-panel="weeklyPanel">Schedule</button>
               <button id="tabWordle"  class="tab-btn"            role="tab" aria-selected="false" data-panel="wordleView">Wordle</button>
+              <button id="tabMessages" class="tab-btn"           role="tab" aria-selected="false" data-panel="messagesView">Notes <span id="userUnreadBadge" class="tab-badge hidden"></span></button>
             </nav>
           </div>
 
@@ -280,6 +281,40 @@
 
           </div>
 
+          <!-- ══════════════════════════════ NOTES PANEL ══════════════════ -->
+          <div id="messagesView" class="messages-panel hidden">
+
+            <div class="messages-header">
+              <p class="eyebrow">Direct Channel</p>
+              <h2 class="messages-title">Notes with Admin</h2>
+            </div>
+
+            <!-- Scrollable message stack -->
+            <div id="userMessageList" class="message-list" aria-live="polite"></div>
+
+            <!-- Input area pinned at bottom -->
+            <form id="userMessageForm" class="message-input-form" novalidate>
+              <div class="input-wrapper">
+                <textarea
+                  id="userMessageInput"
+                  class="message-textarea"
+                  placeholder="Leave a note for your admin…"
+                  rows="2"
+                  maxlength="1000"
+                  required
+                ></textarea>
+                <div class="input-footer">
+                  <span id="userCharCounter" class="char-counter">0 / 1000</span>
+                  <button id="userSendBtn" type="submit" class="primary-action message-send-btn">
+                    Send Note →
+                  </button>
+                </div>
+              </div>
+              <p id="userMessageError" class="form-message" role="alert"></p>
+            </form>
+
+          </div>
+
         </main>
 
       </div>
@@ -312,6 +347,7 @@
               <button id="tabAdminUsers" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="adminUsersView">Users</button>
               <button id="tabAdminCalendar" class="tab-btn"            role="tab" aria-selected="false" data-panel="adminCalendarView">Calendar</button>
               <button id="tabAdminStats" class="tab-btn"            role="tab" aria-selected="false" data-panel="adminStatsView">Stats</button>
+              <button id="tabAdminMessages" class="tab-btn"         role="tab" aria-selected="false" data-panel="adminMessagesView">Messages <span id="adminUnreadBadge" class="tab-badge hidden"></span></button>
             </nav>
           </div>
 
@@ -370,6 +406,59 @@
                 </thead>
                 <tbody id="adminStatsTableBody"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Admin Messages view tab -->
+          <div id="adminMessagesView" class="admin-view-panel hidden">
+            <div class="admin-messages-layout">
+
+              <!-- Left pane: Inbox list -->
+              <aside class="admin-inbox-pane">
+                <div class="panel-heading">
+                  <p class="eyebrow">User Threads</p>
+                </div>
+                <div id="adminInboxList" class="admin-inbox-list"></div>
+              </aside>
+
+              <!-- Right pane: Selected Thread View -->
+              <section class="admin-thread-pane">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Active Thread</p>
+                    <h3 id="adminSelectedUserTitle" class="panel-title">Select a user to view thread</h3>
+                  </div>
+                </div>
+
+                <div id="adminThreadContainer" class="admin-thread-container hidden">
+                  <div id="adminMessageList" class="message-list" aria-live="polite"></div>
+
+                  <form id="adminMessageForm" class="message-input-form" novalidate>
+                    <div class="input-wrapper">
+                      <textarea
+                        id="adminMessageInput"
+                        class="message-textarea"
+                        placeholder="Reply to user…"
+                        rows="2"
+                        maxlength="1000"
+                        required
+                      ></textarea>
+                      <div class="input-footer">
+                        <span id="adminCharCounter" class="char-counter">0 / 1000</span>
+                        <button id="adminSendBtn" type="submit" class="primary-action message-send-btn">
+                          Send Reply →
+                        </button>
+                      </div>
+                    </div>
+                    <p id="adminMessageError" class="form-message" role="alert"></p>
+                  </form>
+                </div>
+
+                <div id="adminThreadPlaceholder" class="thread-placeholder">
+                  <p class="muted-text">Select a user thread from the inbox list on the left to view and send notes.</p>
+                </div>
+              </section>
+
             </div>
           </div>
 
