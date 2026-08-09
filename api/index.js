@@ -353,7 +353,23 @@ module.exports = async (req, res) => {
       if (user.blocked === true)
         return send(res, 403, { error: "Your account has been blocked by the administrator." });
 
-      return send(res, 200, { username, token: signToken(username), state: normalizeState(user.state) });
+      // ── First-login-after-note anchor (set once, never overwritten for same note) ──
+      const _msgs      = (await kvGet(`messages:${username}`)) || [];
+      const _adminNote = [..._msgs].reverse().find(m => m.sender === "admin") || null;
+      if (_adminNote && user.firstLoginAfterNoteId !== _adminNote.id) {
+        user.firstLoginAfterNoteAt = new Date().toISOString();
+        user.firstLoginAfterNoteId = _adminNote.id;
+        user.updatedAt = user.firstLoginAfterNoteAt;
+        await kvSet(`user:${username}`, user);
+      }
+
+      return send(res, 200, {
+        username,
+        token: signToken(username),
+        state: normalizeState(user.state),
+        firstLoginAfterNoteAt: user.firstLoginAfterNoteAt || null,
+        firstLoginAfterNoteId: user.firstLoginAfterNoteId || null,
+      });
     }
 
     // ── GET /api/state ──────────────────────────────────────────────
@@ -698,6 +714,71 @@ module.exports = async (req, res) => {
 
         return send(res, 200, { success: true, userId: targetUserId });
       }
+    }
+
+    // ── GET /api/notes/sticky/:userId ─────────────────────────────────────
+    if (req.method === "GET" && pathname.startsWith("/api/notes/sticky/")) {
+      const parts = pathname.split("/").filter(Boolean);
+      if (parts.length === 4) {
+        const targetUserId = cleanUsername(parts[3]);
+        const qs      = new URL(matchedPath, "http://x").searchParams;
+        const payload = verifyToken(qs.get("token"));
+        if (!payload) return send(res, 401, { error: "Please log in again." });
+        if (payload.role !== "admin" && payload.sub !== targetUserId)
+          return send(res, 403, { error: "Forbidden." });
+
+        const user     = await kvGet(`user:${targetUserId}`);
+        const messages = (await kvGet(`messages:${targetUserId}`)) || [];
+
+        const latestAdminNote = [...messages].reverse().find(m => m.sender === "admin") || null;
+
+        let userReply = null;
+        if (latestAdminNote) {
+          const noteTs = new Date(latestAdminNote.createdAt).getTime();
+          userReply = [...messages].reverse().find(
+            m => m.sender === "user" && new Date(m.createdAt).getTime() > noteTs
+          ) || null;
+        }
+
+        return send(res, 200, {
+          stickyNote:            latestAdminNote,
+          userReply,
+          firstLoginAfterNoteAt: user?.firstLoginAfterNoteAt || null,
+          firstLoginAfterNoteId: user?.firstLoginAfterNoteId || null,
+        });
+      }
+    }
+
+    // ── GET /api/notes/admin-sticky — latest user msg across all threads ───
+    if (req.method === "GET" && pathname === "/api/notes/admin-sticky") {
+      const qs      = new URL(matchedPath, "http://x").searchParams;
+      const payload = verifyToken(qs.get("token"));
+      if (!payload || payload.role !== "admin")
+        return send(res, 401, { error: "Unauthorized." });
+
+      let userKeys = [];
+      if (!KV_URL || !KV_TOKEN) {
+        userKeys = Object.keys(getLocalDb().users || {}).map(n => `user:${n}`);
+      } else {
+        const r = await fetch(`${KV_URL}/keys/user:*`, {
+          headers: { Authorization: `Bearer ${KV_TOKEN}` },
+        });
+        if (!r.ok) throw new Error(`KV keys read failed (${r.status})`);
+        userKeys = (await r.json()).result || [];
+      }
+
+      let globalLatest = null;
+      for (const key of userKeys) {
+        const uname = key.slice(5);
+        if (uname === "admin") continue;
+        const msgs   = (await kvGet(`messages:${uname}`)) || [];
+        const latest = [...msgs].reverse().find(m => m.sender === "user");
+        if (!latest) continue;
+        if (!globalLatest || new Date(latest.createdAt) > new Date(globalLatest.createdAt))
+          globalLatest = { ...latest, fromUser: uname };
+      }
+
+      return send(res, 200, { stickyNote: globalLatest });
     }
 
     return send(res, 404, { error: "Not found." });
