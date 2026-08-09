@@ -220,7 +220,10 @@ function bindGlobalEvents() {
         document.querySelector("#userAppBody").classList.remove("hidden");
         document.querySelector("#adminAppBody").classList.add("hidden");
         render();
-        if (window.MessagingModule) window.MessagingModule.renderSticky();
+        if (window.MessagingModule) {
+          window.MessagingModule.init();      // ← ensure pen button is wired before render
+          window.MessagingModule.renderSticky();
+        }
       }
     });
 
@@ -405,6 +408,7 @@ function showWelcome() {
     if (session?.username === "admin") {
       window.MessagingModule.initForAdmin();
     } else {
+      window.MessagingModule.init();        // ← wires pen button + visibility listener
       window.MessagingModule.renderSticky();
     }
   }
@@ -2191,6 +2195,31 @@ function renderAdminStats() {
     }
   }
 
+  // ── Cross-browser dialog helpers (covers iOS Safari < 15.4) ─────────
+  function openDialog(dlg) {
+    if (!dlg) return;
+    if (typeof dlg.showModal === "function") {
+      try {
+        dlg.showModal();
+        return;
+      } catch (_) { /* fall through to polyfill */ }
+    }
+    // Polyfill: show as a positioned overlay
+    dlg.setAttribute("open", "");
+    dlg.classList.add("dialog-polyfill-open");
+    document.body.classList.add("dialog-backdrop-active");
+  }
+
+  function closeDialog(dlg) {
+    if (!dlg) return;
+    if (typeof dlg.close === "function") {
+      try { dlg.close(); } catch (_) {}
+    }
+    dlg.removeAttribute("open");
+    dlg.classList.remove("dialog-polyfill-open");
+    document.body.classList.remove("dialog-backdrop-active");
+  }
+
   function initStickyReplyDialog() {
     const penBtn    = document.getElementById("stickyReplyBtn");
     const modal     = document.getElementById("stickyReplyModal");
@@ -2210,21 +2239,28 @@ function renderAdminStats() {
       if (counter) counter.textContent = "0 / 1000";
       const errEl = document.getElementById("stickyReplyError");
       if (errEl) errEl.textContent = "";
-      modal.showModal();
-      input?.focus();
+      openDialog(modal);
+      // Delay focus slightly so iOS keyboard opens correctly
+      setTimeout(() => input?.focus(), 80);
     });
 
-    if (closeBtn)  closeBtn.addEventListener("click",  () => modal.close());
-    if (cancelBtn) cancelBtn.addEventListener("click", () => modal.close());
-    modal.addEventListener("click", (e) => { if (e.target === modal) modal.close(); });
+    if (closeBtn)  closeBtn.addEventListener("click",  () => closeDialog(modal));
+    if (cancelBtn) cancelBtn.addEventListener("click", () => closeDialog(modal));
+
+    // Backdrop click — only dismiss if tapping the actual backdrop, not content
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeDialog(modal);
+    });
 
     if (input) {
       input.addEventListener("input", () => {
         const len = input.value.length;
         if (counter) counter.textContent = `${len} / 1000`;
       });
+      // Enter-to-submit only on non-mobile (mobile Enter = newline)
       input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        const isMobile = window.matchMedia("(pointer: coarse)").matches;
+        if (e.key === "Enter" && !e.shiftKey && !isMobile) {
           e.preventDefault();
           form?.requestSubmit();
         }
@@ -2260,8 +2296,7 @@ function renderAdminStats() {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Failed to send.");
 
-          modal.close();
-          // Refresh the sticky to show the user's reply
+          closeDialog(modal);
           await fetchAndRenderStickyNote();
         } catch (err) {
           if (errEl) errEl.textContent = err.message || "Failed to send. Check your connection.";
