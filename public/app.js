@@ -214,11 +214,16 @@ function bindGlobalEvents() {
         document.querySelector("#adminAppBody").classList.remove("hidden");
         switchAdminTab("adminUsersView");
         loadAdminData();
+        if (window.MessagingModule) window.MessagingModule.initForAdmin();
       } else {
         els.fabAddEvent.hidden = false;
         document.querySelector("#userAppBody").classList.remove("hidden");
         document.querySelector("#adminAppBody").classList.add("hidden");
         render();
+        if (window.MessagingModule) {
+          window.MessagingModule.init();      // ← ensure pen button is wired before render
+          window.MessagingModule.renderSticky();
+        }
       }
     });
 
@@ -342,7 +347,12 @@ async function authenticate(mode) {
 
   try {
     const result = await api(`/${mode}`, { username, password });
-    session = { username: result.username, token: result.token };
+    session = {
+      username:              result.username,
+      token:                 result.token,
+      firstLoginAfterNoteAt: result.firstLoginAfterNoteAt || null,
+      firstLoginAfterNoteId: result.firstLoginAfterNoteId || null,
+    };
     localStorage.setItem(localSessionKey, JSON.stringify(session));
     if (username === "admin") {
       state = blankState();
@@ -393,7 +403,15 @@ function showWelcome() {
     updateWelcomePreview();
   }
 
-  if (window.MessagingModule) window.MessagingModule.checkUnreadBadges();
+  if (window.MessagingModule) {
+    window.MessagingModule.checkUnreadBadges();
+    if (session?.username === "admin") {
+      window.MessagingModule.initForAdmin();
+    } else {
+      window.MessagingModule.init();        // ← wires pen button + visibility listener
+      window.MessagingModule.renderSticky();
+    }
+  }
 }
 
 function updateWelcomePreview() {
@@ -903,8 +921,6 @@ function switchTab(panelId) {
   els.weeklyPanel.classList.toggle("hidden", panelId !== "weeklyPanel");
   const wordleView = document.querySelector("#wordleView");
   if (wordleView) wordleView.classList.toggle("hidden", panelId !== "wordleView");
-  const messagesView = document.querySelector("#messagesView");
-  if (messagesView) messagesView.classList.toggle("hidden", panelId !== "messagesView");
 
   if (panelId === "weeklyPanel") renderWeekly();
 
@@ -912,10 +928,6 @@ function switchTab(panelId) {
     if (window.WordleModule) window.WordleModule.init();
   } else {
     if (window.WordleModule) window.WordleModule.detach();
-  }
-
-  if (panelId === "messagesView") {
-    if (window.MessagingModule) window.MessagingModule.onUserOpenTab();
   }
 }
 
@@ -1226,6 +1238,9 @@ function switchAdminTab(panelId) {
   }
   if (panelId === "adminMessagesView") {
     if (window.MessagingModule) window.MessagingModule.onAdminOpenTab();
+  }
+  if (session?.username === "admin" && window.MessagingModule) {
+    window.MessagingModule.initForAdmin();
   }
 }
 
@@ -2032,7 +2047,6 @@ function renderAdminStats() {
 /* ═══════════════════════════════════════════ MESSAGING MODULE ══════════════════ */
 (function () {
   let activeAdminUser = null;
-  let userMessages = [];
   let adminThreads = [];
   let isInitialized = false;
 
@@ -2040,19 +2054,7 @@ function renderAdminStats() {
     if (isInitialized) return;
     isInitialized = true;
 
-    // Attach user form submit
-    const userForm = document.getElementById("userMessageForm");
-    const userInput = document.getElementById("userMessageInput");
-    if (userForm && userInput) {
-      userForm.addEventListener("submit", handleUserSend);
-      userInput.addEventListener("input", () => updateCharCounter("userMessageInput", "userCharCounter"));
-      userInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          userForm.requestSubmit();
-        }
-      });
-    }
+    initStickyReplyDialog();
 
     // Attach admin form submit
     const adminForm = document.getElementById("adminMessageForm");
@@ -2076,7 +2078,6 @@ function renderAdminStats() {
       }
     });
 
-    // Run initial unread check
     checkUnreadBadges();
   }
 
@@ -2102,165 +2103,245 @@ function renderAdminStats() {
       } else {
         checkUnreadBadges();
       }
+      fetchAndRenderAdminGlobalSticky();
     } else {
-      const userView = document.getElementById("messagesView");
-      if (userView && !userView.classList.contains("hidden")) {
-        fetchUserMessages();
-      } else {
-        checkUnreadBadges();
-      }
+      fetchAndRenderStickyNote();
     }
   }
 
   async function checkUnreadBadges() {
-    if (!session || !session.username || !session.token) return;
-
-    try {
-      if (session.username === "admin") {
-        const res = await fetch(`/api/messages?token=${encodeURIComponent(session.token)}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const hasUnread = (data.threads || []).some(t => t.unreadCount > 0);
-        const badge = document.getElementById("adminUnreadBadge");
-        if (badge) badge.classList.toggle("hidden", !hasUnread);
-      } else {
-        const res = await fetch(`/api/messages/${encodeURIComponent(session.username)}?token=${encodeURIComponent(session.token)}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        const hasUnread = (data.messages || []).some(m => m.sender === "admin" && !m.readByUser);
-        const badge = document.getElementById("userUnreadBadge");
-        if (badge) badge.classList.toggle("hidden", !hasUnread);
-      }
-    } catch {
-      // Ignore background check failure
-    }
-  }
-
-  // ── USER SIDE METHODS ────────────────────────────────────────────────
-
-  async function onUserOpenTab() {
-    initMessaging();
-    await fetchUserMessages();
-    await markUserRead();
-  }
-
-  async function fetchUserMessages() {
     if (!session?.username || !session?.token) return;
-
-    const localKey = `attendance-guard:messages:${session.username}`;
+    if (session.username !== "admin") return;
 
     try {
-      const res = await fetch(`/api/messages/${encodeURIComponent(session.username)}?token=${encodeURIComponent(session.token)}`);
+      const res = await fetch(`/api/messages?token=${encodeURIComponent(session.token)}`);
+      if (!res.ok) return;
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch messages.");
-
-      userMessages = data.messages || [];
-      localStorage.setItem(localKey, JSON.stringify(userMessages));
-    } catch (err) {
-      // Fallback to local storage if offline/failed
-      const cached = localStorage.getItem(localKey);
-      if (cached) {
-        try { userMessages = JSON.parse(cached); } catch { userMessages = []; }
-      }
+      const hasUnread = (data.threads || []).some((t) => t.unreadCount > 0);
+      const badge = document.getElementById("adminUnreadBadge");
+      if (badge) badge.classList.toggle("hidden", !hasUnread);
+    } catch {
+      // Ignore
     }
-
-    renderUserMessageList();
-    const hasUnread = userMessages.some(m => m.sender === "admin" && !m.readByUser);
-    const badge = document.getElementById("userUnreadBadge");
-    if (badge) badge.classList.toggle("hidden", !hasUnread);
   }
 
-  function renderUserMessageList() {
-    const listEl = document.getElementById("userMessageList");
-    if (!listEl) return;
+  // ── USER STICKY NOTE LOGIC ──────────────────────────────────────────
 
-    if (userMessages.length === 0) {
-      listEl.innerHTML = `<div class="message-empty">No notes yet. Leave one for your admin.</div>`;
-      return;
+  async function fetchAndRenderStickyNote() {
+    if (!session?.username || !session?.token || session.username === "admin") return;
+
+    const stickyEl       = document.getElementById("adminStickyNote");
+    const emptyEl        = document.getElementById("stickyEmptyState");
+    const stickyText     = document.getElementById("adminStickyText");
+    const stickyTime     = document.getElementById("adminStickyTime");
+    const replySection   = document.getElementById("stickyUserReply");
+    const replyText      = document.getElementById("stickyUserReplyText");
+    const replyTime      = document.getElementById("stickyUserReplyTime");
+
+    function showEmpty() {
+      if (stickyEl) stickyEl.classList.add("hidden");
+      if (emptyEl)  emptyEl.classList.remove("hidden");
+    }
+    function showSticky() {
+      if (stickyEl) stickyEl.classList.remove("hidden");
+      if (emptyEl)  emptyEl.classList.add("hidden");
     }
 
-    listEl.innerHTML = "";
-    userMessages.forEach((m) => {
-      const isMe = m.sender === "user";
-      const item = document.createElement("div");
-      item.className = `message-item ${isMe ? "sent-by-me" : "sent-by-other"}`;
+    try {
+      const res = await fetch(
+        `/api/notes/sticky/${encodeURIComponent(session.username)}?token=${encodeURIComponent(session.token)}`
+      );
+      const data = await res.json();
+      if (!res.ok) { showEmpty(); return; }
 
-      const senderLabel = isMe ? "YOU" : "ADMIN";
-      const timeStr = formatTimestamp(m.createdAt);
+      const { stickyNote, userReply, firstLoginAfterNoteAt, firstLoginAfterNoteId } = data;
 
-      item.innerHTML = `
-        <div class="message-meta">
-          <span>${senderLabel}</span>
-          <span>·</span>
-          <span>${timeStr}</span>
-        </div>
-        <div class="message-bubble">${escapeHtml(m.body)}</div>
-      `;
-      listEl.appendChild(item);
+      // No admin note at all → empty state
+      if (!stickyNote) { showEmpty(); return; }
+
+      // ── 24-hour expiry check (anchored to FIRST login, never resets) ──
+      if (firstLoginAfterNoteAt && firstLoginAfterNoteId === stickyNote.id) {
+        const anchorMs = new Date(firstLoginAfterNoteAt).getTime();
+        const hoursSinceFirstLogin = (Date.now() - anchorMs) / (1000 * 60 * 60);
+        if (hoursSinceFirstLogin >= 24) {
+          // Expired — show empty state
+          showEmpty();
+          return;
+        }
+      }
+
+      // ── Render admin note on sticky ──────────────────────────
+      if (stickyText) stickyText.textContent = stickyNote.body;
+      if (stickyTime) stickyTime.textContent = formatTimestamp(stickyNote.createdAt);
+
+      // Store note body for the reply dialog
+      if (stickyEl) stickyEl.dataset.noteBody = stickyNote.body;
+
+      // ── Render user's own reply (if exists) ─────────────────
+      if (userReply && replySection && replyText && replyTime) {
+        replyText.textContent = userReply.body;
+        replyTime.textContent = formatTimestamp(userReply.createdAt);
+        replySection.classList.remove("hidden");
+        // Hide pen button since user already replied
+        if (stickyEl) stickyEl.classList.add("has-replied");
+      } else {
+        if (replySection) replySection.classList.add("hidden");
+        if (stickyEl)     stickyEl.classList.remove("has-replied");
+      }
+
+      showSticky();
+    } catch {
+      showEmpty();
+    }
+  }
+
+  // ── Cross-browser dialog helpers (covers iOS Safari < 15.4) ─────────
+  function openDialog(dlg) {
+    if (!dlg) return;
+    if (typeof dlg.showModal === "function") {
+      try {
+        dlg.showModal();
+        return;
+      } catch (_) { /* fall through to polyfill */ }
+    }
+    // Polyfill: show as a positioned overlay
+    dlg.setAttribute("open", "");
+    dlg.classList.add("dialog-polyfill-open");
+    document.body.classList.add("dialog-backdrop-active");
+  }
+
+  function closeDialog(dlg) {
+    if (!dlg) return;
+    if (typeof dlg.close === "function") {
+      try { dlg.close(); } catch (_) {}
+    }
+    dlg.removeAttribute("open");
+    dlg.classList.remove("dialog-polyfill-open");
+    document.body.classList.remove("dialog-backdrop-active");
+  }
+
+  function initStickyReplyDialog() {
+    const penBtn    = document.getElementById("stickyReplyBtn");
+    const modal     = document.getElementById("stickyReplyModal");
+    const closeBtn  = document.getElementById("closeStickyReplyModal");
+    const cancelBtn = document.getElementById("cancelStickyReplyModal");
+    const form      = document.getElementById("stickyReplyForm");
+    const input     = document.getElementById("stickyReplyInput");
+    const quote     = document.getElementById("stickyReplyQuote");
+    const counter   = document.getElementById("stickyReplyCharCounter");
+
+    if (!penBtn || !modal) return;
+
+    penBtn.addEventListener("click", () => {
+      const stickyEl = document.getElementById("adminStickyNote");
+      if (quote) quote.textContent = stickyEl?.dataset.noteBody || "";
+      if (input) input.value = "";
+      if (counter) counter.textContent = "0 / 1000";
+      const errEl = document.getElementById("stickyReplyError");
+      if (errEl) errEl.textContent = "";
+      openDialog(modal);
+      // Delay focus slightly so iOS keyboard opens correctly
+      setTimeout(() => input?.focus(), 80);
     });
 
-    listEl.scrollTop = listEl.scrollHeight;
-  }
+    if (closeBtn)  closeBtn.addEventListener("click",  () => closeDialog(modal));
+    if (cancelBtn) cancelBtn.addEventListener("click", () => closeDialog(modal));
 
-  async function markUserRead() {
-    if (!session?.username || !session?.token) return;
-    try {
-      await fetch(`/api/messages/${encodeURIComponent(session.username)}/read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: session.token, reader: "user" }),
+    // Backdrop click — only dismiss if tapping the actual backdrop, not content
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeDialog(modal);
+    });
+
+    if (input) {
+      input.addEventListener("input", () => {
+        const len = input.value.length;
+        if (counter) counter.textContent = `${len} / 1000`;
       });
-      const badge = document.getElementById("userUnreadBadge");
-      if (badge) badge.classList.add("hidden");
-    } catch {
-      // Quiet fail
-    }
-  }
-
-  async function handleUserSend(e) {
-    e.preventDefault();
-    const input = document.getElementById("userMessageInput");
-    const errEl = document.getElementById("userMessageError");
-    const sendBtn = document.getElementById("userSendBtn");
-    if (!input || !errEl || !sendBtn) return;
-
-    const bodyText = input.value.trim();
-    errEl.textContent = "";
-
-    if (!bodyText) return;
-    if (bodyText.length > 1000) {
-      errEl.textContent = "Message exceeds 1000 characters.";
-      return;
+      // Enter-to-submit only on non-mobile (mobile Enter = newline)
+      input.addEventListener("keydown", (e) => {
+        const isMobile = window.matchMedia("(pointer: coarse)").matches;
+        if (e.key === "Enter" && !e.shiftKey && !isMobile) {
+          e.preventDefault();
+          form?.requestSubmit();
+        }
+      });
     }
 
-    sendBtn.disabled = true;
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl   = document.getElementById("stickyReplyError");
+        const sendBtn = document.getElementById("stickyReplySendBtn");
+        const bodyText = input?.value.trim() || "";
 
-    try {
-      const res = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: session.token,
-          userId: session.username,
-          sender: "user",
-          body: bodyText,
-        }),
+        if (errEl) errEl.textContent = "";
+        if (!bodyText) return;
+        if (bodyText.length > 1000) {
+          if (errEl) errEl.textContent = "Message exceeds 1000 characters.";
+          return;
+        }
+
+        if (sendBtn) sendBtn.disabled = true;
+        try {
+          const res = await fetch("/api/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token:  session.token,
+              userId: session.username,
+              sender: "user",
+              body:   bodyText,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Failed to send.");
+
+          closeDialog(modal);
+          await fetchAndRenderStickyNote();
+        } catch (err) {
+          if (errEl) errEl.textContent = err.message || "Failed to send. Check your connection.";
+        } finally {
+          if (sendBtn) sendBtn.disabled = false;
+        }
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send message.");
-
-      input.value = "";
-      updateCharCounter("userMessageInput", "userCharCounter");
-      await fetchUserMessages();
-    } catch (err) {
-      errEl.textContent = err.message || "Failed to send. Check your connection.";
-    } finally {
-      sendBtn.disabled = false;
     }
   }
 
   // ── ADMIN SIDE METHODS ────────────────────────────────────────────────
+
+  async function fetchAndRenderAdminGlobalSticky() {
+    if (session?.username !== "admin" || !session?.token) return;
+
+    const stickyEl = document.getElementById("adminGlobalSticky");
+    const fromEl   = document.getElementById("adminGlobalStickyFrom");
+    const textEl   = document.getElementById("adminGlobalStickyText");
+    const timeEl   = document.getElementById("adminGlobalStickyTime");
+    if (!stickyEl) return;
+
+    try {
+      const res = await fetch(
+        `/api/notes/admin-sticky?token=${encodeURIComponent(session.token)}`
+      );
+      const data = await res.json();
+      if (!res.ok || !data.stickyNote) {
+        stickyEl.classList.add("hidden");
+        return;
+      }
+
+      const note = data.stickyNote;
+      if (fromEl) fromEl.textContent = `@${note.fromUser}`;
+      if (textEl) textEl.textContent = note.body;
+      if (timeEl) timeEl.textContent = formatTimestamp(note.createdAt);
+      stickyEl.classList.remove("hidden");
+    } catch {
+      stickyEl.classList.add("hidden");
+    }
+  }
+
+  async function initForAdmin() {
+    initMessaging();
+    await fetchAndRenderAdminGlobalSticky();
+  }
 
   async function onAdminOpenTab() {
     initMessaging();
@@ -2282,7 +2363,7 @@ function renderAdminStats() {
 
     renderAdminInboxList();
 
-    const hasUnread = adminThreads.some(t => t.unreadCount > 0);
+    const hasUnread = adminThreads.some((t) => t.unreadCount > 0);
     const badge = document.getElementById("adminUnreadBadge");
     if (badge) badge.classList.toggle("hidden", !hasUnread);
   }
@@ -2359,12 +2440,31 @@ function renderAdminStats() {
     const listEl = document.getElementById("adminMessageList");
     if (!listEl) return;
 
+    listEl.innerHTML = "";
+
+    // Sticky preview of the latest admin note sent to this user
+    const adminMsgs = messages.filter((m) => m.sender === "admin");
+    if (adminMsgs.length > 0) {
+      const latestAdminNote = adminMsgs[adminMsgs.length - 1];
+      const stickyCard = document.createElement("div");
+      stickyCard.className = "admin-thread-sticky-card";
+      stickyCard.innerHTML = `
+        <span class="sticky-label">📌 Latest note sent to user</span>
+        <p class="thread-sticky-body"></p>
+        <span class="sticky-time">${formatTimestamp(latestAdminNote.createdAt)}</span>
+      `;
+      stickyCard.querySelector(".thread-sticky-body").textContent = latestAdminNote.body;
+      listEl.appendChild(stickyCard);
+    }
+
     if (messages.length === 0) {
-      listEl.innerHTML = `<div class="message-empty">No notes in this thread yet.</div>`;
+      const empty = document.createElement("div");
+      empty.className = "message-empty";
+      empty.textContent = "No notes in this thread yet.";
+      listEl.appendChild(empty);
       return;
     }
 
-    listEl.innerHTML = "";
     messages.forEach((m) => {
       const isMe = m.sender === "admin";
       const item = document.createElement("div");
@@ -2465,8 +2565,9 @@ function renderAdminStats() {
 
   window.MessagingModule = {
     init: initMessaging,
-    onUserOpenTab,
+    initForAdmin,
     onAdminOpenTab,
     checkUnreadBadges,
+    renderSticky: fetchAndRenderStickyNote,
   };
 })();

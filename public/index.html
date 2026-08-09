@@ -162,160 +162,162 @@
         </div>
       </nav>
 
+      <!-- ── Admin Global Sticky: latest user message ── -->
+      <div id="adminGlobalSticky" class="admin-global-sticky hidden">
+        <span class="sticky-label">📬 Latest message</span>
+        <span id="adminGlobalStickyFrom" class="admin-sticky-from"></span>
+        <p id="adminGlobalStickyText" class="admin-sticky-text"></p>
+        <span id="adminGlobalStickyTime" class="sticky-time"></span>
+      </div>
+
       <!-- ── App body: sidebar + main ───────────────────────── -->
       <!-- User App body -->
-      <div id="userAppBody" class="app-body">
+      <div id="userAppBody" class="app-body-wrapper">
 
-        <!-- Sidebar: controls only -->
-        <aside class="sidebar">
-
-          <div class="sidebar-block">
-            <p class="eyebrow">Attendance target</p>
-            <strong id="targetLabel" class="target-value">75%</strong>
-            <input
-              id="targetAttendance"
-              type="range"
-              min="75"
-              max="95"
-              value="75"
-              aria-label="Attendance target percentage"
-            />
-          </div>
-
-          <div class="sidebar-block">
-            <button id="resetData" class="ghost-action full-width">
-              Reset all marks
+        <!-- ── Admin Sticky Note (always rendered, hidden when no note) ── -->
+        <div id="adminStickyNote" class="admin-sticky hidden" role="status" aria-live="polite">
+          <div class="sticky-header">
+            <span class="sticky-label">📌 Note from Admin</span>
+            <button id="stickyReplyBtn" class="sticky-pen-btn" title="Reply to admin" aria-label="Reply to admin">
+              ✏️
             </button>
           </div>
+          <p id="adminStickyText" class="sticky-body"></p>
+          <span id="adminStickyTime" class="sticky-time"></span>
 
-        </aside>
-
-        <!-- Main content area -->
-        <main class="main-content">
-
-          <!-- Tab navigation -->
-          <div class="content-header">
-            <nav class="view-tabs" role="tablist" aria-label="Main view">
-              <button id="tabTracker" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="trackerView">Courses</button>
-              <button id="tabWeek"    class="tab-btn"            role="tab" aria-selected="false" data-panel="weeklyPanel">Schedule</button>
-              <button id="tabWordle"  class="tab-btn"            role="tab" aria-selected="false" data-panel="wordleView">Wordle</button>
-              <button id="tabMessages" class="tab-btn"           role="tab" aria-selected="false" data-panel="messagesView">Notes <span id="userUnreadBadge" class="tab-badge hidden"></span></button>
-            </nav>
+          <!-- User's own reply shown beneath the admin note -->
+          <div id="stickyUserReply" class="sticky-user-reply hidden">
+            <span class="sticky-reply-label">YOUR REPLY</span>
+            <p id="stickyUserReplyText" class="sticky-reply-body"></p>
+            <span id="stickyUserReplyTime" class="sticky-time"></span>
           </div>
+        </div>
 
-          <!-- Tracker view: course cards + calendar workspace -->
-          <div id="trackerView">
-            <div id="summaryGrid" class="summary-grid"></div>
+        <!-- "No new messages" empty state (shown when no note) -->
+        <div id="stickyEmptyState" class="sticky-empty hidden">
+          <span>No new messages</span>
+        </div>
 
-            <div class="workspace">
+        <!-- Original flex row: sidebar + main -->
+        <div class="app-body">
 
-              <aside class="calendar-panel" aria-label="Semester calendar">
-                <div class="panel-heading">
-                  <p class="eyebrow">Semester calendar</p>
-                </div>
-                <div id="calendar" class="calendar"></div>
-              </aside>
+          <!-- Sidebar: controls only -->
+          <aside class="sidebar">
 
-              <section class="day-panel" aria-label="Day schedule">
-                <div class="panel-heading">
-                  <div>
-                    <p class="eyebrow">Selected day</p>
-                    <h3 id="selectedDateTitle" class="panel-title"></h3>
+            <div class="sidebar-block">
+              <p class="eyebrow">Attendance target</p>
+              <strong id="targetLabel" class="target-value">75%</strong>
+              <input
+                id="targetAttendance"
+                type="range"
+                min="75"
+                max="95"
+                value="75"
+                aria-label="Attendance target percentage"
+              />
+            </div>
+
+            <div class="sidebar-block">
+              <button id="resetData" class="ghost-action full-width">
+                Reset all marks
+              </button>
+            </div>
+
+          </aside>
+
+          <!-- Main content area -->
+          <main class="main-content">
+
+            <!-- Tab navigation -->
+            <div class="content-header">
+              <nav class="view-tabs" role="tablist" aria-label="Main view">
+                <button id="tabTracker" class="tab-btn tab-active" role="tab" aria-selected="true"  data-panel="trackerView">Courses</button>
+                <button id="tabWeek"    class="tab-btn"            role="tab" aria-selected="false" data-panel="weeklyPanel">Schedule</button>
+                <button id="tabWordle"  class="tab-btn"            role="tab" aria-selected="false" data-panel="wordleView">Wordle</button>
+              </nav>
+            </div>
+
+            <!-- Tracker view: course cards + calendar workspace -->
+            <div id="trackerView">
+              <div id="summaryGrid" class="summary-grid"></div>
+
+              <div class="workspace">
+
+                <aside class="calendar-panel" aria-label="Semester calendar">
+                  <div class="panel-heading">
+                    <p class="eyebrow">Semester calendar</p>
                   </div>
-                  <button id="markDayBunk" class="ghost-action">
-                    Bunk day
-                  </button>
-                </div>
-                <p id="dayMeta" class="day-meta"></p>
-                <div id="scheduleList" class="schedule-list"></div>
-              </section>
+                  <div id="calendar" class="calendar"></div>
+                </aside>
 
-            </div>
-          </div>
+                <section class="day-panel" aria-label="Day schedule">
+                  <div class="panel-heading">
+                    <div>
+                      <p class="eyebrow">Selected day</p>
+                      <h3 id="selectedDateTitle" class="panel-title"></h3>
+                    </div>
+                    <button id="markDayBunk" class="ghost-action">
+                      Bunk day
+                    </button>
+                  </div>
+                  <p id="dayMeta" class="day-meta"></p>
+                  <div id="scheduleList" class="schedule-list"></div>
+                </section>
 
-          <!-- Weekly schedule panel -->
-          <div id="weeklyPanel" class="weekly-panel hidden"></div>
-
-          <!-- ══════════════════════════════ WORDLE PANEL ══════════════════ -->
-          <div id="wordleView" class="wordle-panel hidden">
-
-            <div class="wordle-header">
-              <p class="eyebrow">Daily challenge</p>
-              <h2 class="wordle-title">WORDLE</h2>
-              <p id="wordleDate" class="wordle-date"></p>
-            </div>
-
-            <!-- Error / status message -->
-            <p id="wordleError" class="wordle-error" role="alert"></p>
-
-            <!-- 6×5 board -->
-            <div id="wordleBoard" class="wordle-board"></div>
-
-            <!-- On-screen keyboard -->
-            <div id="wordleKeyboard" class="wordle-keyboard"></div>
-
-            <!-- End-of-game overlay (hidden until game over) -->
-            <div id="wordleEndScreen" class="wordle-end hidden">
-              <p id="wordleEndMessage" class="wordle-end-message"></p>
-              <div id="wordleAnswerReveal" class="wordle-answer-reveal hidden"></div>
-              <p class="wordle-comeback">Come back tomorrow for a new word! 📅</p>
-            </div>
-
-            <!-- Streak badge (always visible while on Wordle tab) -->
-            <div id="wordleStreakBar" class="wordle-streak-bar hidden">
-              <span class="streak-fire">🔥</span>
-              <span id="wordleStreakCount" class="streak-count">0</span>
-              <span class="streak-label">day streak</span>
-              <span class="streak-sep">·</span>
-              <span class="streak-label">Best:</span>
-              <span id="wordleStreakBest" class="streak-best">0</span>
-            </div>
-
-            <!-- Leaderboard (always visible, refreshes when tab opens) -->
-            <div id="wordleLeaderboard" class="wordle-leaderboard">
-              <p class="eyebrow">Today's leaderboard</p>
-              <div id="wordleLeaderboardList" class="wordle-lb-list">
-                <span class="wordle-lb-loading">Loading…</span>
               </div>
             </div>
 
-          </div>
+            <!-- Weekly schedule panel -->
+            <div id="weeklyPanel" class="weekly-panel hidden"></div>
 
-          <!-- ══════════════════════════════ NOTES PANEL ══════════════════ -->
-          <div id="messagesView" class="messages-panel hidden">
+            <!-- ══════════════════════════════ WORDLE PANEL ══════════════════ -->
+            <div id="wordleView" class="wordle-panel hidden">
 
-            <div class="messages-header">
-              <p class="eyebrow">Direct Channel</p>
-              <h2 class="messages-title">Notes with Admin</h2>
-            </div>
+              <div class="wordle-header">
+                <p class="eyebrow">Daily challenge</p>
+                <h2 class="wordle-title">WORDLE</h2>
+                <p id="wordleDate" class="wordle-date"></p>
+              </div>
 
-            <!-- Scrollable message stack -->
-            <div id="userMessageList" class="message-list" aria-live="polite"></div>
+              <!-- Error / status message -->
+              <p id="wordleError" class="wordle-error" role="alert"></p>
 
-            <!-- Input area pinned at bottom -->
-            <form id="userMessageForm" class="message-input-form" novalidate>
-              <div class="input-wrapper">
-                <textarea
-                  id="userMessageInput"
-                  class="message-textarea"
-                  placeholder="Leave a note for your admin…"
-                  rows="2"
-                  maxlength="1000"
-                  required
-                ></textarea>
-                <div class="input-footer">
-                  <span id="userCharCounter" class="char-counter">0 / 1000</span>
-                  <button id="userSendBtn" type="submit" class="primary-action message-send-btn">
-                    Send Note →
-                  </button>
+              <!-- 6×5 board -->
+              <div id="wordleBoard" class="wordle-board"></div>
+
+              <!-- On-screen keyboard -->
+              <div id="wordleKeyboard" class="wordle-keyboard"></div>
+
+              <!-- End-of-game overlay (hidden until game over) -->
+              <div id="wordleEndScreen" class="wordle-end hidden">
+                <p id="wordleEndMessage" class="wordle-end-message"></p>
+                <div id="wordleAnswerReveal" class="wordle-answer-reveal hidden"></div>
+                <p class="wordle-comeback">Come back tomorrow for a new word! 📅</p>
+              </div>
+
+              <!-- Streak badge (always visible while on Wordle tab) -->
+              <div id="wordleStreakBar" class="wordle-streak-bar hidden">
+                <span class="streak-fire">🔥</span>
+                <span id="wordleStreakCount" class="streak-count">0</span>
+                <span class="streak-label">day streak</span>
+                <span class="streak-sep">·</span>
+                <span class="streak-label">Best:</span>
+                <span id="wordleStreakBest" class="streak-best">0</span>
+              </div>
+
+              <!-- Leaderboard (always visible, refreshes when tab opens) -->
+              <div id="wordleLeaderboard" class="wordle-leaderboard">
+                <p class="eyebrow">Today's leaderboard</p>
+                <div id="wordleLeaderboardList" class="wordle-lb-list">
+                  <span class="wordle-lb-loading">Loading…</span>
                 </div>
               </div>
-              <p id="userMessageError" class="form-message" role="alert"></p>
-            </form>
 
-          </div>
+            </div>
 
-        </main>
+          </main>
+
+        </div>
 
       </div>
 
@@ -532,6 +534,43 @@
           <button type="button" id="cancelModal" class="ghost-action">Cancel</button>
         </div>
 
+      </form>
+    </dialog>
+
+
+    <!-- ── Sticky Note Reply Dialog ──────────────────────── -->
+    <dialog id="stickyReplyModal" class="event-modal sticky-reply-modal" aria-label="Reply to admin note">
+      <form id="stickyReplyForm" class="event-form" method="dialog" novalidate>
+        <header class="modal-header">
+          <p class="eyebrow">Reply to Admin</p>
+          <button type="button" id="closeStickyReplyModal" class="modal-close" aria-label="Close">×</button>
+        </header>
+
+        <!-- Shows the admin's note as quoted context -->
+        <div class="sticky-reply-quote" id="stickyReplyQuote"></div>
+
+        <label class="field">
+          <span class="field-label">YOUR NOTE</span>
+          <textarea
+            id="stickyReplyInput"
+            class="message-textarea"
+            placeholder="Type your reply…"
+            rows="4"
+            maxlength="1000"
+            required
+          ></textarea>
+        </label>
+
+        <div class="input-footer">
+          <span id="stickyReplyCharCounter" class="char-counter">0 / 1000</span>
+        </div>
+
+        <p id="stickyReplyError" class="form-message" role="alert"></p>
+
+        <div class="modal-actions">
+          <button type="submit" id="stickyReplySendBtn" class="primary-action">Send Note →</button>
+          <button type="button" id="cancelStickyReplyModal" class="ghost-action">Cancel</button>
+        </div>
       </form>
     </dialog>
 
